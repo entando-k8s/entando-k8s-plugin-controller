@@ -1,0 +1,89 @@
+package org.entando.kubernetes.controller.plugin;
+
+import io.fabric8.kubernetes.api.model.EnvVar;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import org.entando.kubernetes.controller.KeycloakClientConfig;
+import org.entando.kubernetes.controller.KeycloakConnectionConfig;
+import org.entando.kubernetes.controller.KubeUtils;
+import org.entando.kubernetes.controller.spi.DeployableContainer;
+import org.entando.kubernetes.controller.spi.KeycloakAware;
+import org.entando.kubernetes.controller.spi.KubernetesPermission;
+import org.entando.kubernetes.controller.spi.TlsAware;
+import org.entando.kubernetes.model.plugin.EntandoPlugin;
+
+public class EntandoPluginSidecarDeployableContainer implements DeployableContainer, KeycloakAware, TlsAware {
+
+    public static final String REQUIRED_ROLE = "connection-config";
+    private static final String ENTANDO_PLUGIN_SIDECAR_IMAGE = "entando/entando-plugin-sidecar";
+
+    private final EntandoPlugin entandoPlugin;
+    private final KeycloakConnectionConfig keycloakConnectionConfig;
+
+    public EntandoPluginSidecarDeployableContainer(EntandoPlugin entandoPlugin, KeycloakConnectionConfig keycloakConnectionConfig) {
+        this.entandoPlugin = entandoPlugin;
+        this.keycloakConnectionConfig = keycloakConnectionConfig;
+    }
+
+    public static String keycloakClientIdOf(EntandoPlugin entandoPlugin) {
+        return entandoPlugin.getMetadata().getName() + "-" + "sidecar";
+    }
+
+    @Override
+    public int getCpuLimitMillicores() {
+        return 750;
+    }
+
+    @Override
+    public int getMemoryLimitMebibytes() {
+        return 768;
+    }
+
+    @Override
+    public String determineImageToUse() {
+        return ENTANDO_PLUGIN_SIDECAR_IMAGE;
+    }
+
+    @Override
+    public String getNameQualifier() {
+        return "sidecar";
+    }
+
+    @Override
+    public int getPort() {
+        return 8084;
+    }
+
+    @Override
+    public void addEnvironmentVariables(List<EnvVar> vars) {
+        vars.add(new EnvVar("ENTANDO_PLUGIN_NAME", entandoPlugin.getMetadata().getName(), null));
+    }
+
+    public KeycloakConnectionConfig getKeycloakConnectionConfig() {
+        return keycloakConnectionConfig;
+    }
+
+    @Override
+    public KeycloakClientConfig getKeycloakClientConfig() {
+        String clientId = keycloakClientIdOf(this.entandoPlugin);
+        return new KeycloakClientConfig(KubeUtils.ENTANDO_KEYCLOAK_REALM, clientId, clientId).withRole(REQUIRED_ROLE);
+    }
+
+    @Override
+    public String getWebContextPath() {
+        return "";
+    }
+
+    @Override
+    public Optional<String> getHealthCheckPath() {
+        return Optional.of("/actuator/health");
+    }
+
+    @Override
+    public List<KubernetesPermission> getKubernetesPermissions() {
+        return Arrays.asList(new KubernetesPermission("entando.org", "entandoplugins", "get", "update"),
+                new KubernetesPermission("", "secrets", "create", "get", "update", "delete"));
+    }
+
+}

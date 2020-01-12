@@ -1,0 +1,12 @@
+
+.idea/*
+!.idea/runConfigurations
+!.idea/codeStyles
+!.idea/sonarlint.xml
+target/
+*.iml
+.classpath
+.project
+.settings/
+classes/
+/src/test/resources/crd/examples/
