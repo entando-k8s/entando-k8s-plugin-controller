@@ -13,4 +13,5 @@ This project produces the Entando Plugin Controller image. It is a run-to-comple
 that processes a single EntandoPlugin custom resource and deploys a the plugin image and supporting
 images as specified.
 
+For more information on how to configure this image, please consult the documentation in the [entando-k8s-operator-common](https://github.com/entando-k8s-infrastructure/entando-k8s-operator-common) project
 
