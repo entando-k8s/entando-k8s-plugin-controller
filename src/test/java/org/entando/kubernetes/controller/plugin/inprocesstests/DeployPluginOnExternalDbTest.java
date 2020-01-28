@@ -108,7 +108,7 @@ public class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTr
     @Test
     public void testDeployment() {
         //Given I have configured the controller to use image version 6.0.0 by default
-        System.setProperty(EntandoOperatorConfigProperty.ENTANDO_DOCKER_IMAGE_VERSION_DEFAULT.getJvmSystemProperty(), "6.0.0");
+        System.setProperty(EntandoOperatorConfigProperty.ENTANDO_DOCKER_IMAGE_VERSION_FALLBACK.getJvmSystemProperty(), "6.0.0");
         //And I have created an EntandoDatabaseService custom resource
         new CreateExternalServiceCommand(externalDatabase).execute(client);
         //And Keycloak is receiving requests
