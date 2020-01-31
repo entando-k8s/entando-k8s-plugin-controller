@@ -75,7 +75,7 @@ public class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTr
     @BeforeEach
     public void putAppAndDatabase() {
         client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
-        client.entandoResources().putEntandoCustomResource(externalDatabase);
+        client.entandoResources().createOrPatchEntandoResource(externalDatabase);
         client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
         client.secrets().overwriteControllerSecret(buildKeycloakSecret());
         entandoPluginController = new EntandoPluginController(client, keycloakClient);
@@ -120,7 +120,7 @@ public class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTr
 
         //Then K8S was instructed to create a Deployment for both the Plugin JEE Server and the DB
         ArgumentCaptor<Deployment> deploymentCaptor = ArgumentCaptor.forClass(Deployment.class);
-        verify(client.deployments()).createDeployment(eq(newEntandoPlugin), deploymentCaptor.capture());
+        verify(client.deployments()).createOrPatchDeployment(eq(newEntandoPlugin), deploymentCaptor.capture());
         final Deployment serverDeployment = deploymentCaptor.getAllValues().get(0);
         assertThat(serverDeployment.getMetadata().getName(), is(MY_PLUGIN_SERVER + "-deployment"));
 

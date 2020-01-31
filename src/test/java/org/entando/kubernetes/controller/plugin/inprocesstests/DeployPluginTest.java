@@ -157,13 +157,13 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
         //Then K8S was instructed to create a PersistentVolumeClaim for the DB and the JEE Server
         NamedArgumentCaptor<PersistentVolumeClaim> dbPvcCaptor = forResourceNamed(PersistentVolumeClaim.class,
                 MY_PLUGIN_DB_PVC);
-        verify(client.persistentVolumeClaims()).createPersistentVolumeClaim(eq(newEntandoPlugin), dbPvcCaptor.capture());
+        verify(client.persistentVolumeClaims()).createPersistentVolumeClaimIfAbsent(eq(newEntandoPlugin), dbPvcCaptor.capture());
         //With names that reflect the EntandoPlugin and the type of deployment the claim is used for
         PersistentVolumeClaim theDbPvc = dbPvcCaptor.getValue();
 
         NamedArgumentCaptor<PersistentVolumeClaim> pluginPvcCaptor = forResourceNamed(PersistentVolumeClaim.class,
                 MY_PLUGIN_SERVER_PVC);
-        verify(client.persistentVolumeClaims()).createPersistentVolumeClaim(eq(newEntandoPlugin), pluginPvcCaptor.capture());
+        verify(client.persistentVolumeClaims()).createPersistentVolumeClaimIfAbsent(eq(newEntandoPlugin), pluginPvcCaptor.capture());
         PersistentVolumeClaim theServerPvc = pluginPvcCaptor.getValue();
 
         //And labels that link this PVC to the EntandoPlugin and the specific deployment
@@ -203,8 +203,8 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
         NamedArgumentCaptor<Service> dbServiceCaptor = forResourceNamed(Service.class, MY_PLUGIN_DB_SERVICE);
         NamedArgumentCaptor<Service> serverServiceCaptor = forResourceNamed(Service.class, MY_PLUGIN_SERVER_SERVICE);
         //With names that reflect the EntandoPlugin and the type of deployment the claim is used for
-        verify(client.services()).createService(eq(newEntandoPlugin), dbServiceCaptor.capture());
-        verify(client.services()).createService(eq(newEntandoPlugin), serverServiceCaptor.capture());
+        verify(client.services()).createOrReplaceService(eq(newEntandoPlugin), dbServiceCaptor.capture());
+        verify(client.services()).createOrReplaceService(eq(newEntandoPlugin), serverServiceCaptor.capture());
 
         //And selectors that match the EntandoApp,EntandoPlugin and the specific deployment specifying the pods
         Service theDbService = dbServiceCaptor.getValue();
@@ -265,11 +265,11 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
         //Then K8S was instructed to create a Deployment for both the Plugin JEE Server and the DB
         NamedArgumentCaptor<Deployment> dbDeploymentCaptor = forResourceNamed(Deployment.class,
                 MY_PLUGIN_DB_DEPLOYMENT);
-        verify(client.deployments()).createDeployment(eq(newEntandoPlugin), dbDeploymentCaptor.capture());
+        verify(client.deployments()).createOrPatchDeployment(eq(newEntandoPlugin), dbDeploymentCaptor.capture());
         final Deployment dbDeployment = dbDeploymentCaptor.getValue();
         NamedArgumentCaptor<Deployment> serverDeploymentCaptor = forResourceNamed(Deployment.class,
                 MY_PLUGIN + "-server-deployment");
-        verify(client.deployments()).createDeployment(eq(newEntandoPlugin), serverDeploymentCaptor.capture());
+        verify(client.deployments()).createOrPatchDeployment(eq(newEntandoPlugin), serverDeploymentCaptor.capture());
         final Deployment serverDeployment = serverDeploymentCaptor.getValue();
 
         //With a Pod Template that has labels linking it to the previously created K8S Services

@@ -36,7 +36,7 @@ public class EntandoPluginController extends AbstractDbAwareController<EntandoPl
     }
 
     @Override
-    protected void processAddition(EntandoPlugin newEntandoPlugin) {
+    protected void synchronizeDeploymentState(EntandoPlugin newEntandoPlugin) {
         k8sClient.entandoResources().updatePhase(newEntandoPlugin, EntandoDeploymentPhase.STARTED);
         DatabaseServiceResult databaseServiceResult = prepareDatabaseService(newEntandoPlugin, newEntandoPlugin.getSpec().getDbms(), "db");
         KeycloakConnectionConfig keycloakConnectionConfig = k8sClient.entandoResources().findKeycloak(newEntandoPlugin);
