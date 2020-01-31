@@ -355,7 +355,6 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
                 is(KubeUtils.PASSSWORD_KEY));
         assertThat(theVariableNamed("SPRING_DATASOURCE_URL").on(thePluginContainer),
                 is("jdbc:mysql://" + MY_PLUGIN_DB_SERVICE + "." + MY_PLUGIN_NAMESPACE + ".svc.cluster.local:3306/my_plugin_plugindb"));
-        assertThat(theVariableNamed("ENTANDO_CONFIG_SERVICE_URI").on(thePluginContainer), is("http://localhost:8083/config-service"));
         assertThat(theVariableNamed("ENTANDO_CONNECTIONS_ROOT").on(thePluginContainer),
                 is(DeploymentCreator.ENTANDO_SECRET_MOUNTS_ROOT));
         assertThat(theVariableNamed("ENTANDO_PLUGIN_SECURITY_LEVEL").on(thePluginContainer), is("STRICT"));
