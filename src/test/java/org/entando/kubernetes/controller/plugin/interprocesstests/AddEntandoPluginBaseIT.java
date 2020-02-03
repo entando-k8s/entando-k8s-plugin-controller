@@ -5,9 +5,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.fabric8.kubernetes.api.model.DoneablePod;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
+import io.fabric8.kubernetes.client.dsl.PodResource;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import org.entando.kubernetes.controller.KubeUtils;
@@ -53,9 +55,20 @@ public abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting
                         .deleteAll(EntandoPlugin.class).fromNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
                         .deleteAll(EntandoKeycloakServer.class).fromNamespace(KeycloakIntegrationTestHelper.KEYCLOAK_NAMESPACE)
         );
+        await().atMost(2, TimeUnit.MINUTES).ignoreExceptions().pollInterval(10, TimeUnit.SECONDS).until(this::killPgPod);
         registerListeners(helper);
         //Determine best guess hostnames for the Entando DE App Ingress
         pluginHostName = EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "." + helper.getDomainSuffix();
+    }
+
+    private boolean killPgPod() {
+        PodResource<Pod, DoneablePod> resource = helper.getClient().pods()
+                .inNamespace(KeycloakIntegrationTestHelper.KEYCLOAK_NAMESPACE).withName("pg-test");
+        if (resource.fromServer().get() == null) {
+            return true;
+        }
+        resource.delete();
+        return false;
     }
 
     public void createAndWaitForPlugin(EntandoPlugin plugin, boolean isDbEmbedded) {
