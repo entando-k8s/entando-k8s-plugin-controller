@@ -33,6 +33,11 @@ public class EntandoPluginServerDeployable implements IngressingDeployable<Servi
     }
 
     @Override
+    public int getReplicas() {
+        return entandoPlugin.getSpec().getReplicas().orElse(1);
+    }
+
+    @Override
     public String getServiceAccountName() {
         return "entando-plugin";
     }
