@@ -1,3 +1,19 @@
+/*
+ *
+ * Copyright 2015-Present Entando Inc. (http://www.entando.com) All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ *  This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ *
+ */
+
 package org.entando.kubernetes.controller.plugin.inprocesstests;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -47,9 +63,11 @@ import org.entando.kubernetes.controller.k8sclient.SimpleK8SClient;
 import org.entando.kubernetes.controller.plugin.EntandoPluginController;
 import org.entando.kubernetes.controller.test.support.FluentTraversals;
 import org.entando.kubernetes.controller.test.support.VariableReferenceAssertions;
-import org.entando.kubernetes.model.DbmsImageVendor;
+import org.entando.kubernetes.model.DbmsVendor;
 import org.entando.kubernetes.model.EntandoCustomResource;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
+import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
+import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -83,7 +101,8 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
     private static final int PORT_3396 = 3306;
     private static final int PORT_8081 = 8081;
     private static final int PORT_8083 = 8083;
-    final EntandoPlugin entandoPlugin = buildTestEntandoPlugin();
+    final EntandoPlugin entandoPlugin = new EntandoPluginBuilder(buildTestEntandoPlugin()).editSpec()
+            .withSecurityLevel(PluginSecurityLevel.LENIENT).endSpec().build();
     @Spy
     private final SimpleK8SClient<EntandoResourceClientDouble> client = new SimpleK8SClientDouble();
     @Mock
@@ -357,7 +376,7 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
                 is("jdbc:mysql://" + MY_PLUGIN_DB_SERVICE + "." + MY_PLUGIN_NAMESPACE + ".svc.cluster.local:3306/my_plugin_plugindb"));
         assertThat(theVariableNamed("ENTANDO_CONNECTIONS_ROOT").on(thePluginContainer),
                 is(DeploymentCreator.ENTANDO_SECRET_MOUNTS_ROOT));
-        assertThat(theVariableNamed("ENTANDO_PLUGIN_SECURITY_LEVEL").on(thePluginContainer), is("STRICT"));
+        assertThat(theVariableNamed("ENTANDO_PLUGIN_SECURITY_LEVEL").on(thePluginContainer), is("LENIENT"));
     }
 
     private void verifyDbContainer(Container theDbContainer) {
@@ -399,6 +418,6 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
         assertThat(theVariableNamed(DATABASE_NAME).on(resultingContainer), is("my_plugin_db"));
         assertThat(theVariableNamed(DATABASE_SERVER_HOST).on(resultingContainer),
                 is(MY_PLUGIN_DB_SERVICE + "." + MY_PLUGIN_NAMESPACE + ".svc.cluster.local"));
-        verifyStandardSchemaCreationVariables(MY_PLUGIN_DB_ADMIN_SECRET, secretToMatch, resultingContainer, DbmsImageVendor.MYSQL);
+        verifyStandardSchemaCreationVariables(MY_PLUGIN_DB_ADMIN_SECRET, secretToMatch, resultingContainer, DbmsVendor.MYSQL);
     }
 }

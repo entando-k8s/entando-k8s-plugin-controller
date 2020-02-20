@@ -1,10 +1,26 @@
+/*
+ *
+ * Copyright 2015-Present Entando Inc. (http://www.entando.com) All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ *  This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ *
+ */
+
 package org.entando.kubernetes.controller.plugin;
 
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.Ingress;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import org.entando.kubernetes.controller.KeycloakConnectionConfig;
 import org.entando.kubernetes.controller.KubeUtils;
@@ -15,6 +31,7 @@ import org.entando.kubernetes.controller.spi.DeployableContainer;
 import org.entando.kubernetes.controller.spi.IngressingDeployable;
 import org.entando.kubernetes.model.EntandoCustomResource;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
+import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 
 public class EntandoPluginServerDeployable implements IngressingDeployable<ServiceDeploymentResult>, DbAwareDeployable {
 
@@ -27,9 +44,11 @@ public class EntandoPluginServerDeployable implements IngressingDeployable<Servi
         this.databaseServiceResult = databaseServiceResult;
         this.entandoPlugin = entandoPlugin;
         //TODO make decision on which other containers to include based on the EntandoPlugin.spec
-        this.containers = Arrays.asList(
-                new EntandoPluginDeployableContainer(entandoPlugin, keycloakConnectionConfig),
-                new EntandoPluginSidecarDeployableContainer(entandoPlugin, keycloakConnectionConfig));
+        this.containers = new ArrayList<>();
+        this.containers.add(new EntandoPluginDeployableContainer(entandoPlugin, keycloakConnectionConfig));
+        if (entandoPlugin.getSpec().getSecurityLevel().map(PluginSecurityLevel.LENIENT::equals).orElse(true)) {
+            this.containers.add(new EntandoPluginSidecarDeployableContainer(entandoPlugin, keycloakConnectionConfig));
+        }
     }
 
     @Override

@@ -1,3 +1,19 @@
+/*
+ *
+ * Copyright 2015-Present Entando Inc. (http://www.entando.com) All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ *  This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ *
+ */
+
 package org.entando.kubernetes.controller.plugin.interprocesstests;
 
 import static org.hamcrest.CoreMatchers.containsString;
@@ -14,6 +30,7 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import org.entando.kubernetes.controller.KubeUtils;
 import org.entando.kubernetes.controller.common.TlsHelper;
+import org.entando.kubernetes.controller.database.DbmsVendorStrategy;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoOperatorTestConfig;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoOperatorTestConfig.TestTarget;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
@@ -22,7 +39,7 @@ import org.entando.kubernetes.controller.integrationtest.support.HttpTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.K8SIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.KeycloakIntegrationTestHelper;
 import org.entando.kubernetes.controller.plugin.EntandoPluginController;
-import org.entando.kubernetes.model.DbmsImageVendor;
+import org.entando.kubernetes.model.DbmsVendor;
 import org.entando.kubernetes.model.externaldatabase.EntandoDatabaseService;
 import org.entando.kubernetes.model.keycloakserver.EntandoKeycloakServer;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
@@ -31,7 +48,8 @@ import org.junit.jupiter.api.BeforeEach;
 
 public abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting {
 
-    protected static final DbmsImageVendor DBMS = DbmsImageVendor.POSTGRESQL;
+    protected static final DbmsVendor DBMS = DbmsVendor.POSTGRESQL;
+    protected static final DbmsVendorStrategy DBMS_STRATEGY = DbmsVendorStrategy.forVendor(DBMS);
     protected String pluginHostName;
     protected K8SIntegrationTestHelper helper = new K8SIntegrationTestHelper();
 

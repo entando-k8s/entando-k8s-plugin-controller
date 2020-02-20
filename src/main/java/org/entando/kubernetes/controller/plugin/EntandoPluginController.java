@@ -1,3 +1,19 @@
+/*
+ *
+ * Copyright 2015-Present Entando Inc. (http://www.entando.com) All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ *  This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ *
+ */
+
 package org.entando.kubernetes.controller.plugin;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -13,7 +29,7 @@ import org.entando.kubernetes.controller.ServiceDeploymentResult;
 import org.entando.kubernetes.controller.SimpleKeycloakClient;
 import org.entando.kubernetes.controller.database.DatabaseServiceResult;
 import org.entando.kubernetes.controller.k8sclient.SimpleK8SClient;
-import org.entando.kubernetes.model.EntandoDeploymentPhase;
+import org.entando.kubernetes.model.DbmsVendor;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 
 public class EntandoPluginController extends AbstractDbAwareController<EntandoPlugin> {
@@ -37,8 +53,11 @@ public class EntandoPluginController extends AbstractDbAwareController<EntandoPl
 
     @Override
     protected void synchronizeDeploymentState(EntandoPlugin newEntandoPlugin) {
-        k8sClient.entandoResources().updatePhase(newEntandoPlugin, EntandoDeploymentPhase.STARTED);
-        DatabaseServiceResult databaseServiceResult = prepareDatabaseService(newEntandoPlugin, newEntandoPlugin.getSpec().getDbms(), "db");
+        DatabaseServiceResult databaseServiceResult = null;
+        if (newEntandoPlugin.getSpec().getDbms().orElse(DbmsVendor.NONE) != DbmsVendor.NONE) {
+            databaseServiceResult = prepareDatabaseService(newEntandoPlugin, newEntandoPlugin.getSpec().getDbms().get(),
+                    "db");
+        }
         KeycloakConnectionConfig keycloakConnectionConfig = k8sClient.entandoResources().findKeycloak(newEntandoPlugin);
         keycloakClient.login(keycloakConnectionConfig.getBaseUrl(), keycloakConnectionConfig.getUsername(),
                 keycloakConnectionConfig.getPassword());
@@ -46,6 +65,5 @@ public class EntandoPluginController extends AbstractDbAwareController<EntandoPl
         DeployCommand<ServiceDeploymentResult> deployPluginServerCommand = new DeployCommand<>(
                 new EntandoPluginServerDeployable(databaseServiceResult, keycloakConnectionConfig, newEntandoPlugin));
         deployPluginServerCommand.execute(k8sClient, Optional.of(keycloakClient));
-        k8sClient.entandoResources().updateStatus(newEntandoPlugin, deployPluginServerCommand.getStatus());
     }
 }

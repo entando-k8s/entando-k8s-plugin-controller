@@ -1,3 +1,19 @@
+/*
+ *
+ * Copyright 2015-Present Entando Inc. (http://www.entando.com) All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ *  This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ *
+ */
+
 package org.entando.kubernetes.controller.plugin.interprocesstests;
 
 import static java.lang.String.format;
@@ -48,10 +64,10 @@ public class AddEntandoPluginWithEmbeddedDatabaseIT extends AddEntandoPluginBase
         assertThat(thePortNamed(DB_PORT)
                         .on(theContainerNamed("db-container").on(deployment))
                         .getContainerPort(),
-                is(DBMS.getPort()));
+                is(DBMS_STRATEGY.getPort()));
         Service dbService = helper.getClient().services().inNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
                 .withName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-db-service").fromServer().get();
-        assertThat(thePortNamed(DB_PORT).on(dbService).getPort(), is(DBMS.getPort()));
+        assertThat(thePortNamed(DB_PORT).on(dbService).getPort(), is(DBMS_STRATEGY.getPort()));
         await().atMost(20, TimeUnit.SECONDS).ignoreExceptions().until(() -> deployment.getStatus().getReadyReplicas() >= 1);
     }
 }

@@ -17,20 +17,18 @@
 package org.entando.kubernetes.controller.plugin.inprocesstests;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.emptyOrNullString;
-import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.Is.is;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyString;
-import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.internal.verification.VerificationModeFactory.atLeast;
 
 import io.fabric8.kubernetes.api.model.Container;
-import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.Watcher.Action;
@@ -40,10 +38,8 @@ import org.entando.kubernetes.controller.EntandoOperatorConfigProperty;
 import org.entando.kubernetes.controller.KeycloakClientConfig;
 import org.entando.kubernetes.controller.KubeUtils;
 import org.entando.kubernetes.controller.SimpleKeycloakClient;
-import org.entando.kubernetes.controller.common.CreateExternalServiceCommand;
 import org.entando.kubernetes.controller.inprocesstest.InProcessTestUtil;
 import org.entando.kubernetes.controller.inprocesstest.argumentcaptors.KeycloakClientConfigArgumentCaptor;
-import org.entando.kubernetes.controller.inprocesstest.argumentcaptors.LabeledArgumentCaptor;
 import org.entando.kubernetes.controller.inprocesstest.argumentcaptors.NamedArgumentCaptor;
 import org.entando.kubernetes.controller.inprocesstest.k8sclientdouble.EntandoResourceClientDouble;
 import org.entando.kubernetes.controller.inprocesstest.k8sclientdouble.SimpleK8SClientDouble;
@@ -52,8 +48,6 @@ import org.entando.kubernetes.controller.plugin.EntandoPluginController;
 import org.entando.kubernetes.controller.test.support.FluentTraversals;
 import org.entando.kubernetes.model.AbstractServerStatus;
 import org.entando.kubernetes.model.DbmsVendor;
-import org.entando.kubernetes.model.externaldatabase.EntandoDatabaseService;
-import org.entando.kubernetes.model.externaldatabase.EntandoDatabaseServiceBuilder;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,7 +63,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 //in execute component test
 @Tag("in-process")
 
-public class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTraversals {
+public class DeployPluginWithoutDbTest implements InProcessTestUtil, FluentTraversals {
 
     public static final String SERVER_PORT = "server-port";
     public static final int PORT_8081 = 8081;
@@ -77,23 +71,17 @@ public class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTr
     public static final String MY_PLUGIN_SERVER_SECRET = MY_PLUGIN_SERVER + "-secret";
     private static final String MY_PLUGIN_PLUGINDB = MY_PLUGIN + "-plugindb";
     private static final String MY_PLUGIN_PLUGINDB_SECRET = MY_PLUGIN_PLUGINDB + "-secret";
-    private static final String MYDB_SERVICE_MY_PLUGINNAMESPACE_SVC_CLUSTER_LOCAL =
-            "mydb-service." + MY_PLUGIN_NAMESPACE + ".svc.cluster.local";
-    private static final String DATABASE_NAME = "DATABASE_NAME";
-    private static final String DATABASE_SERVER_HOST = "DATABASE_SERVER_HOST";
-    private final EntandoDatabaseService externalDatabase = buildEntandoDatabaseService();
     @Spy
     private final SimpleK8SClient<EntandoResourceClientDouble> client = new SimpleK8SClientDouble();
     @Mock
     private SimpleKeycloakClient keycloakClient;
     private EntandoPluginController entandoPluginController;
-    private EntandoPlugin entandoPlugin = new EntandoPluginBuilder(buildTestEntandoPlugin()).editSpec().withDbms(DbmsVendor.ORACLE)
-            .endSpec().build();
+    private EntandoPlugin entandoPlugin = new EntandoPluginBuilder(buildTestEntandoPlugin()).editSpec().withDbms(DbmsVendor.NONE).endSpec()
+            .build();
 
     @BeforeEach
-    public void putAppAndDatabase() {
+    public void putResources() {
         client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
-        client.entandoResources().createOrPatchEntandoResource(externalDatabase);
         client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
         client.secrets().overwriteControllerSecret(buildKeycloakSecret());
         entandoPluginController = new EntandoPluginController(client, keycloakClient);
@@ -107,28 +95,21 @@ public class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTr
     @Test
     public void testSecrets() {
         //Given I have an entando plugin
-        //And I have created an EntandoDatabaseService custom resource
-        new CreateExternalServiceCommand(externalDatabase).execute(client);
+        EntandoPlugin newEntandoPlugin = this.entandoPlugin;
         //And Keycloak is receiving requests
         when(keycloakClient.prepareClientAndReturnSecret(any(KeycloakClientConfig.class))).thenReturn(KEYCLOAK_SECRET);
         //When the EntandoPluginController is notified that a plugin has been add
-        EntandoPlugin newEntandoPlugin = this.entandoPlugin;
         entandoPluginController.onStartup(new StartupEvent());
 
-        //Then a K8S Secret was created with a name that reflects the EntandoPlugin and the fact that it is a database secret
+        //Then no K8S Secret was created with for the DB
         NamedArgumentCaptor<Secret> secretCaptor = forResourceNamed(Secret.class, MY_PLUGIN_PLUGINDB_SECRET);
-        verify(client.secrets(), atLeastOnce()).createSecretIfAbsent(eq(newEntandoPlugin), secretCaptor.capture());
-        Secret resultingSecret = secretCaptor.getValue();
-        assertThat(resultingSecret.getStringData().get(KubeUtils.USERNAME_KEY), is("my_plugin_plugindb"));
-        assertThat(resultingSecret.getStringData().get(KubeUtils.PASSSWORD_KEY), is(not(emptyOrNullString())));
+        verify(client.secrets(), never()).createSecretIfAbsent(eq(newEntandoPlugin), secretCaptor.capture());
     }
 
     @Test
     public void testDeployment() {
         //Given I have configured the controller to use image version 6.0.0 by default
         System.setProperty(EntandoOperatorConfigProperty.ENTANDO_DOCKER_IMAGE_VERSION_FALLBACK.getJvmSystemProperty(), "6.0.0");
-        //And I have created an EntandoDatabaseService custom resource
-        new CreateExternalServiceCommand(externalDatabase).execute(client);
         //And Keycloak is receiving requests
         when(keycloakClient.prepareClientAndReturnSecret(any(KeycloakClientConfig.class))).thenReturn(KEYCLOAK_SECRET);
         //And I have an entando plugin
@@ -159,25 +140,14 @@ public class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTr
                 is(MY_PLUGIN_SERVER + "-pvc"));
 
         // and the JEE volument is mounted at /entando-data
-        assertThat(theVolumeMountNamed(MY_PLUGIN_SERVER + "-volume").on(thePrimaryContainerOn(serverDeployment)).getMountPath(),
+        Container pluginContainer = theContainerNamed("server-container").on(serverDeployment);
+        assertThat(theVolumeMountNamed(MY_PLUGIN_SERVER + "-volume").on(pluginContainer).getMountPath(),
                 is("/entando-data"));
         //And the JEE container uses an image reflecting the custom registry and Entando image version specified
         assertThat(serverContainer.getImage(), is("docker.io/entando/myplugin:6.0.0"));
-
-        assertThat(theVariableNamed("SPRING_DATASOURCE_URL").on(thePrimaryContainerOn(serverDeployment)),
-                is("jdbc:oracle:thin:@//mydb-service." + MY_PLUGIN_NAMESPACE + ".svc.cluster.local:1521/my_db"));
-        assertThat(theVariableReferenceNamed("SPRING_DATASOURCE_USERNAME").on(thePrimaryContainerOn(serverDeployment)).getSecretKeyRef()
-                        .getName(),
-                is(MY_PLUGIN_PLUGINDB_SECRET));
-        assertThat(
-                theVariableReferenceNamed("SPRING_DATASOURCE_USERNAME").on(thePrimaryContainerOn(serverDeployment)).getSecretKeyRef()
-                        .getKey(),
-                is(KubeUtils.USERNAME_KEY));
-        assertThat(
-                theVariableReferenceNamed("SPRING_DATASOURCE_PASSWORD").on(thePrimaryContainerOn(serverDeployment)).getSecretKeyRef()
-                        .getKey(),
-                is(KubeUtils.PASSSWORD_KEY));
-
+        assertFalse(pluginContainer.getEnv().stream().anyMatch(envVar -> envVar.getName().equalsIgnoreCase("SPRING_DATASOURCE_URL")));
+        assertFalse(pluginContainer.getEnv().stream().anyMatch(envVar -> envVar.getName().equalsIgnoreCase("SPRING_DATASOURCE_USERNAME")));
+        assertFalse(pluginContainer.getEnv().stream().anyMatch(envVar -> envVar.getName().equalsIgnoreCase("SPRING_DATASOURCE_PASSWORD")));
         //And Keycloak was configured to support OIDC Integration from the EntandoApp
         verify(keycloakClient).ensureRealm(eq(ENTANDO_KEYCLOAK_REALM));
         verify(keycloakClient, times(2))
@@ -189,7 +159,7 @@ public class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTr
         assertThat(keycloakClientConfigCaptor.getValue().getPermissions().get(0).getRole(), is("plugin-admin"));
         //And is configured to use the previously installed Keycloak instance
         String mypluginServerSecret = MY_PLUGIN_SERVER_SECRET;
-        verifyKeycloakSettings(thePrimaryContainerOn(serverDeployment), mypluginServerSecret);
+        verifyKeycloakSettings(pluginContainer, mypluginServerSecret);
 
         //And the state of both the Deployment was reloaded from K8S
         verify(client.deployments(), times(0)).loadDeployment(eq(newEntandoPlugin), eq(MY_PLUGIN + "-db-deployment"));
@@ -200,46 +170,4 @@ public class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTr
         verify(client.entandoResources(), atLeast(2)).updateStatus(eq(newEntandoPlugin), statusCaptor.capture());
     }
 
-    @Test
-    public void testSchemaPreparation() {
-        //Given I have an entando plugin
-        //And I have created an EntandoDatabaseService custom resource
-        new CreateExternalServiceCommand(externalDatabase).execute(client);
-        //And Keycloak is receiving requests
-        when(keycloakClient.prepareClientAndReturnSecret(any(KeycloakClientConfig.class))).thenReturn(KEYCLOAK_SECRET);
-        //When the EntandoPluginController is notified that a plugin has been add
-        EntandoPlugin newEntandoPlugin = this.entandoPlugin;
-        entandoPluginController.onStartup(new StartupEvent());
-        // Then a K8S deployment is created with a name that reflects the EntandoApp name and
-        // the fact that it is a DB Deployment
-        LabeledArgumentCaptor<Pod> podCaptor = forResourceWithLabel(Pod.class, ENTANDO_PLUGIN_LABEL_NAME, MY_PLUGIN)
-                .andWithLabel(KubeUtils.DB_JOB_LABEL_NAME, MY_PLUGIN + "-db-preparation-job");
-
-        verify(client.pods()).runToCompletion(podCaptor.capture());
-        Pod thePod = podCaptor.getAllValues().get(0);
-        //With a Pod Template that has labels linking it to the previously created K8S Service
-        Map<String, String> selector = thePod.getMetadata().getLabels();
-        assertThat(selector.get(ENTANDO_PLUGIN_LABEL_NAME), is(MY_PLUGIN));
-        //And the DB Image is configured with the appropriate Environment Variables
-        Container pluginDbJob = theInitContainerNamed(MY_PLUGIN_PLUGINDB + "-schema-creation-job").on(thePod);
-        verifyStandardSchemaCreationVariables("my-secret", MY_PLUGIN_PLUGINDB_SECRET, pluginDbJob, DbmsVendor.ORACLE);
-        assertThat(theVariableNamed(DATABASE_NAME).on(pluginDbJob), is("my_db"));
-        assertThat(theVariableNamed(DATABASE_SERVER_HOST).on(pluginDbJob),
-                is(MYDB_SERVICE_MY_PLUGINNAMESPACE_SVC_CLUSTER_LOCAL));
-    }
-
-    private EntandoDatabaseService buildEntandoDatabaseService() {
-        return new EntandoDatabaseServiceBuilder().withNewMetadata()
-                .withName("mydb")
-                .withNamespace(MY_PLUGIN_NAMESPACE)
-                .endMetadata()
-                .withNewSpec()
-                .withDbms(DbmsVendor.ORACLE)
-                .withHost("myoracle.com")
-                .withPort(1521)
-                .withDatabaseName("my_db")
-                .withSecretName("my-secret")
-                .endSpec()
-                .build();
-    }
 }
