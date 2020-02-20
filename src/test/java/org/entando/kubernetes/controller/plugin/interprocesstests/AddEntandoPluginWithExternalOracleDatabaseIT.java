@@ -16,8 +16,11 @@
 
 package org.entando.kubernetes.controller.plugin.interprocesstests;
 
+import static org.entando.kubernetes.controller.KubeUtils.snakeCaseOf;
+
 import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.SampleWriter;
+import org.entando.kubernetes.controller.plugin.EntandoPluginDeployableContainer;
 import org.entando.kubernetes.model.DbmsVendor;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
@@ -26,7 +29,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Tags;
 import org.junit.jupiter.api.Test;
 
-@Tags({@Tag("end-to-end"), @Tag("inter-process"), @Tag("oracle")})
+@Tags({@Tag("end-to-end"), @Tag("inter-processk"), @Tag("oracle")})
 
 public class AddEntandoPluginWithExternalOracleDatabaseIT extends AddEntandoPluginBaseIT {
 
@@ -34,7 +37,8 @@ public class AddEntandoPluginWithExternalOracleDatabaseIT extends AddEntandoPlug
     public void testCreate() {
         //Given I have an external PostgreSQL database
         helper.externalDatabases()
-                .prepareExternalOracleDatabase(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE, "TEST_PLUGIN_A_PLUGINDB");
+                .prepareExternalOracleDatabase(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE,
+                        snakeCaseOf(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-" + EntandoPluginDeployableContainer.PLUGINDB));
         //When I create an EntandoPlugin custom resource
         EntandoPlugin plugin = new EntandoPluginBuilder().withNewSpec().withImage("entando/entando-avatar-plugin")
                 .withDbms(DbmsVendor.ORACLE)
@@ -47,7 +51,7 @@ public class AddEntandoPluginWithExternalOracleDatabaseIT extends AddEntandoPlug
                 .endSpec().build();
         plugin.getMetadata().setName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME);
         SampleWriter.writeSample(plugin, "plugin-with-external-oracle-db");
-        helper.createAndWaitForPlugin(plugin, false);
+        createAndWaitForPlugin(plugin, false);
         verifyPluginServerDeployment();
     }
 
