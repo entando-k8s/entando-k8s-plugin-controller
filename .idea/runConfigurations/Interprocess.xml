@@ -11,7 +11,7 @@
     <option name="TEST_SEARCH_SCOPE">
       <value defaultName="wholeProject" />
     </option>
-    <tag value="inter-processk" />
+    <tag value="inter-process" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>
