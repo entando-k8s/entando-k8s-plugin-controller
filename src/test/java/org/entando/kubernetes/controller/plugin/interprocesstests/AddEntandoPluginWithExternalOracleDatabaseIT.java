@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Tags;
 import org.junit.jupiter.api.Test;
 
-@Tags({@Tag("end-to-end"), @Tag("inter-process"), @Tag("oracle")})
+@Tags({@Tag("end-to-end-disabled"), @Tag("inter-process-disabled"), @Tag("oracle")})
 
 public class AddEntandoPluginWithExternalOracleDatabaseIT extends AddEntandoPluginBaseIT {
 
