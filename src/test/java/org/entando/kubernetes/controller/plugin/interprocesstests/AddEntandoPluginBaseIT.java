@@ -30,7 +30,7 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import org.entando.kubernetes.controller.KubeUtils;
 import org.entando.kubernetes.controller.common.TlsHelper;
-import org.entando.kubernetes.controller.database.DbmsVendorStrategy;
+import org.entando.kubernetes.controller.database.DbmsDockerVendorStrategy;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoOperatorTestConfig;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoOperatorTestConfig.TestTarget;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
@@ -49,7 +49,7 @@ import org.junit.jupiter.api.BeforeEach;
 public abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting {
 
     protected static final DbmsVendor DBMS = DbmsVendor.POSTGRESQL;
-    protected static final DbmsVendorStrategy DBMS_STRATEGY = DbmsVendorStrategy.forVendor(DBMS);
+    protected static final DbmsDockerVendorStrategy DBMS_STRATEGY = DbmsDockerVendorStrategy.forVendor(DBMS);
     protected String pluginHostName;
     protected K8SIntegrationTestHelper helper = new K8SIntegrationTestHelper();
 
