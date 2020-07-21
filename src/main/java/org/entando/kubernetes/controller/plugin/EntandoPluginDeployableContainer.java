@@ -28,13 +28,15 @@ import org.entando.kubernetes.controller.KubeUtils;
 import org.entando.kubernetes.controller.creators.DeploymentCreator;
 import org.entando.kubernetes.controller.database.DatabaseSchemaCreationResult;
 import org.entando.kubernetes.controller.spi.DatabasePopulator;
+import org.entando.kubernetes.controller.spi.ParameterizableContainer;
 import org.entando.kubernetes.controller.spi.PersistentVolumeAware;
 import org.entando.kubernetes.controller.spi.SpringBootDeployableContainer;
 import org.entando.kubernetes.model.DbmsVendor;
+import org.entando.kubernetes.model.EntandoDeploymentSpec;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 
-public class EntandoPluginDeployableContainer implements PersistentVolumeAware, SpringBootDeployableContainer {
+public class EntandoPluginDeployableContainer implements PersistentVolumeAware, SpringBootDeployableContainer, ParameterizableContainer {
 
     public static final String PLUGINDB = "plugindb";
     private final EntandoPlugin entandoPlugin;
@@ -135,5 +137,10 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAware, 
     public Optional<DatabasePopulator> useDatabaseSchemas(Map<String, DatabaseSchemaCreationResult> dbSchemas) {
         this.dbSchemas = dbSchemas;
         return Optional.empty();
+    }
+
+    @Override
+    public EntandoDeploymentSpec getCustomResourceSpec() {
+        return entandoPlugin.getSpec();
     }
 }
