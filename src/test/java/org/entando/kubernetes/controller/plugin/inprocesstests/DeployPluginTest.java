@@ -105,7 +105,8 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
     public static final String PARAMETER_NAME = "MY_PARAM";
     public static final String PARAMETER_VALUE = "MY_VALUE";
     final EntandoPlugin entandoPlugin = new EntandoPluginBuilder(buildTestEntandoPlugin()).editSpec()
-            .withParameters(Collections.singletonMap(PARAMETER_NAME, PARAMETER_VALUE)).withSecurityLevel(PluginSecurityLevel.LENIENT).endSpec().build();
+            .withParameters(Collections.singletonMap(PARAMETER_NAME, PARAMETER_VALUE))
+            .withSecurityLevel(PluginSecurityLevel.LENIENT).endSpec().build();
 
     @Spy
     private final SimpleK8SClient<EntandoResourceClientDouble> client = new SimpleK8SClientDouble();
