@@ -26,10 +26,12 @@ import org.entando.kubernetes.controller.KubeUtils;
 import org.entando.kubernetes.controller.spi.DeployableContainer;
 import org.entando.kubernetes.controller.spi.KeycloakAware;
 import org.entando.kubernetes.controller.spi.KubernetesPermission;
+import org.entando.kubernetes.controller.spi.ParameterizableContainer;
 import org.entando.kubernetes.controller.spi.TlsAware;
+import org.entando.kubernetes.model.EntandoDeploymentSpec;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 
-public class EntandoPluginSidecarDeployableContainer implements DeployableContainer, KeycloakAware, TlsAware {
+public class EntandoPluginSidecarDeployableContainer implements DeployableContainer, KeycloakAware, TlsAware, ParameterizableContainer {
 
     public static final String REQUIRED_ROLE = "connection-config";
     private static final String ENTANDO_PLUGIN_SIDECAR_IMAGE = "entando/entando-plugin-sidecar";
@@ -102,4 +104,8 @@ public class EntandoPluginSidecarDeployableContainer implements DeployableContai
                 new KubernetesPermission("", "secrets", "create", "get", "update", "delete"));
     }
 
+    @Override
+    public EntandoDeploymentSpec getCustomResourceSpec() {
+        return entandoPlugin.getSpec();
+    }
 }

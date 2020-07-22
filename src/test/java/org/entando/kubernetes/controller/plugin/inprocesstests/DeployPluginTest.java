@@ -46,6 +46,7 @@ import io.fabric8.kubernetes.api.model.rbac.RoleBinding;
 import io.fabric8.kubernetes.client.Watcher.Action;
 import io.quarkus.runtime.StartupEvent;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Map;
 import org.entando.kubernetes.controller.EntandoOperatorConfigProperty;
 import org.entando.kubernetes.controller.KeycloakClientConfig;
@@ -101,8 +102,12 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
     private static final int PORT_3396 = 3306;
     private static final int PORT_8081 = 8081;
     private static final int PORT_8083 = 8083;
+    public static final String PARAMETER_NAME = "MY_PARAM";
+    public static final String PARAMETER_VALUE = "MY_VALUE";
     final EntandoPlugin entandoPlugin = new EntandoPluginBuilder(buildTestEntandoPlugin()).editSpec()
+            .withParameters(Collections.singletonMap(PARAMETER_NAME, PARAMETER_VALUE))
             .withSecurityLevel(PluginSecurityLevel.LENIENT).endSpec().build();
+
     @Spy
     private final SimpleK8SClient<EntandoResourceClientDouble> client = new SimpleK8SClientDouble();
     @Mock
@@ -372,6 +377,7 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
                 is(KubeUtils.USERNAME_KEY));
         assertThat(theVariableReferenceNamed(SPRING_DATASOURCE_PASSWORD).on(thePluginContainer).getSecretKeyRef().getKey(),
                 is(KubeUtils.PASSSWORD_KEY));
+        assertThat(theVariableNamed(PARAMETER_NAME).on(thePluginContainer), is(PARAMETER_VALUE));
         assertThat(theVariableNamed("SPRING_DATASOURCE_URL").on(thePluginContainer),
                 is("jdbc:mysql://" + MY_PLUGIN_DB_SERVICE + "." + MY_PLUGIN_NAMESPACE + ".svc.cluster.local:3306/my_plugin_plugindb"));
         assertThat(theVariableNamed("ENTANDO_CONNECTIONS_ROOT").on(thePluginContainer),
