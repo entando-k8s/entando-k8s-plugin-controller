@@ -394,7 +394,10 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
                 is("/var/lib/mysql/data"));
 
         //And the db container uses the image reflecting official mysql image
-        assertThat(theDbContainer.getImage(), is("docker.io/centos/mysql-57-centos7:latest"));
+        //Please note: the docker.io and 6.0.0 my seem counter-intuitive, but it indicates that we are
+        //actually controlling the image as intended
+        //With the correct version in the configmap this will work as planned
+        assertThat(theDbContainer.getImage(), is("docker.io/entando/mysql-57-centos7:6.0.0"));
 
         // And is configured to use the correct username, database and password
         assertThat(theVariableReferenceNamed("MYSQL_ROOT_PASSWORD").on(theDbContainer).getSecretKeyRef().getName(),
