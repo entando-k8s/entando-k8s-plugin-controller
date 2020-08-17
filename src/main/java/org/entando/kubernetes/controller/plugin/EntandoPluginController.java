@@ -59,7 +59,7 @@ public class EntandoPluginController extends AbstractDbAwareController<EntandoPl
             databaseServiceResult = prepareDatabaseService(newEntandoPlugin, dbmsVendor, "db");
         }
         KeycloakConnectionConfig keycloakConnectionConfig = k8sClient.entandoResources().findKeycloak(newEntandoPlugin);
-        keycloakClient.login(keycloakConnectionConfig.getBaseUrl(), keycloakConnectionConfig.getUsername(),
+        keycloakClient.login(keycloakConnectionConfig.determineBaseUrl(), keycloakConnectionConfig.getUsername(),
                 keycloakConnectionConfig.getPassword());
         keycloakClient.ensureRealm(KubeUtils.ENTANDO_KEYCLOAK_REALM);
         DeployCommand<ServiceDeploymentResult> deployPluginServerCommand = new DeployCommand<>(
