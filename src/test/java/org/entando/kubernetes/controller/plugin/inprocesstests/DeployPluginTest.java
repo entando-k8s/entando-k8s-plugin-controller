@@ -34,6 +34,7 @@ import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimStatus;
 import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.fabric8.kubernetes.api.model.Service;
@@ -106,6 +107,15 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
     public static final String PARAMETER_VALUE = "MY_VALUE";
     final EntandoPlugin entandoPlugin = new EntandoPluginBuilder(buildTestEntandoPlugin()).editSpec()
             .withParameters(Collections.singletonMap(PARAMETER_NAME, PARAMETER_VALUE))
+            .withNewResourceRequirements()
+            .withStorageRequest("8Gi")
+            .withStorageLimit("16Gi")
+            .withCpuRequest("150m")
+            .withCpuLimit("1.5")
+            .withFileUploadLimit("150m")
+            .withMemoryRequest("1Gi")
+            .withMemoryLimit("2Gi")
+            .endResourceRequirements()
             .withSecurityLevel(PluginSecurityLevel.LENIENT).endSpec().build();
 
     @Spy
@@ -183,13 +193,18 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
                 MY_PLUGIN_DB_PVC);
         verify(client.persistentVolumeClaims()).createPersistentVolumeClaimIfAbsent(eq(newEntandoPlugin), dbPvcCaptor.capture());
         //With names that reflect the EntandoPlugin and the type of deployment the claim is used for
-        PersistentVolumeClaim theDbPvc = dbPvcCaptor.getValue();
+        final PersistentVolumeClaim theDbPvc = dbPvcCaptor.getValue();
 
         NamedArgumentCaptor<PersistentVolumeClaim> pluginPvcCaptor = forResourceNamed(PersistentVolumeClaim.class,
                 MY_PLUGIN_SERVER_PVC);
         verify(client.persistentVolumeClaims()).createPersistentVolumeClaimIfAbsent(eq(newEntandoPlugin), pluginPvcCaptor.capture());
         PersistentVolumeClaim theServerPvc = pluginPvcCaptor.getValue();
-
+        Quantity storageRequest = theServerPvc.getSpec().getResources().getLimits().get("storage");
+        assertThat(storageRequest.getAmount(), is("16"));
+        assertThat(storageRequest.getFormat(), is("Gi"));
+        Quantity storageLimit = theServerPvc.getSpec().getResources().getRequests().get("storage");
+        assertThat(storageLimit.getAmount(), is("8"));
+        assertThat(storageLimit.getFormat(), is("Gi"));
         //And labels that link this PVC to the EntandoPlugin and the specific deployment
         assertThat(theLabel(ENTANDO_PLUGIN_LABEL_NAME).on(theDbPvc), is(MY_PLUGIN));
         assertThat(theLabel(DEPLOYMENT_LABEL_NAME).on(theDbPvc), is(MY_PLUGIN_DB));
@@ -199,7 +214,6 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
         //And both PersistentVolumeClaims were reloaded from  K8S for its latest state
         verify(client.persistentVolumeClaims()).loadPersistentVolumeClaim(eq(newEntandoPlugin), eq(MY_PLUGIN_DB_PVC));
         verify(client.persistentVolumeClaims()).loadPersistentVolumeClaim(eq(newEntandoPlugin), eq(MY_PLUGIN_SERVER_PVC));
-
         // And K8S was instructed to update the status of the EntandoPlugin with
         // the status of both PersistentVolumeClaims
         verify(client.entandoResources(), atLeastOnce())
@@ -383,6 +397,18 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
         assertThat(theVariableNamed("ENTANDO_CONNECTIONS_ROOT").on(thePluginContainer),
                 is(DeploymentCreator.ENTANDO_SECRET_MOUNTS_ROOT));
         assertThat(theVariableNamed("ENTANDO_PLUGIN_SECURITY_LEVEL").on(thePluginContainer), is("LENIENT"));
+        Quantity cpuRequest = thePluginContainer.getResources().getRequests().get("cpu");
+        assertThat(cpuRequest.getAmount(), is("150"));
+        assertThat(cpuRequest.getFormat(), is("m"));
+        Quantity cpuLimit = thePluginContainer.getResources().getLimits().get("cpu");
+        assertThat(cpuLimit.getAmount(), is("1.5"));
+        assertThat(cpuLimit.getFormat(), is(""));
+        Quantity memoryRequest = thePluginContainer.getResources().getRequests().get("memory");
+        assertThat(memoryRequest.getAmount(), is("1"));
+        assertThat(memoryRequest.getFormat(), is("Gi"));
+        Quantity memoryLimit = thePluginContainer.getResources().getLimits().get("memory");
+        assertThat(memoryLimit.getAmount(), is("2"));
+        assertThat(memoryLimit.getFormat(), is("Gi"));
     }
 
     private void verifyDbContainer(Container theDbContainer) {
