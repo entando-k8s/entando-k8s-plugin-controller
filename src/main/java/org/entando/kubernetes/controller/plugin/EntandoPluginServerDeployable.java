@@ -29,8 +29,9 @@ import org.entando.kubernetes.controller.database.DatabaseServiceResult;
 import org.entando.kubernetes.controller.spi.DbAwareDeployable;
 import org.entando.kubernetes.controller.spi.DeployableContainer;
 import org.entando.kubernetes.controller.spi.IngressingDeployable;
-import org.entando.kubernetes.model.EntandoCustomResource;
+import org.entando.kubernetes.model.EntandoBaseCustomResource;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
+import org.entando.kubernetes.model.plugin.EntandoPluginSpec;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 
 public class EntandoPluginServerDeployable implements IngressingDeployable<ServiceDeploymentResult>, DbAwareDeployable {
@@ -82,7 +83,7 @@ public class EntandoPluginServerDeployable implements IngressingDeployable<Servi
     }
 
     @Override
-    public EntandoCustomResource getCustomResource() {
+    public EntandoBaseCustomResource<EntandoPluginSpec> getCustomResource() {
         return entandoPlugin;
     }
 
