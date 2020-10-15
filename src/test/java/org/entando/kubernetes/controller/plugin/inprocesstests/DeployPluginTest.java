@@ -31,6 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.fabric8.kubernetes.api.model.Container;
+import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimStatus;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -53,7 +54,6 @@ import org.entando.kubernetes.controller.EntandoOperatorConfigProperty;
 import org.entando.kubernetes.controller.KeycloakClientConfig;
 import org.entando.kubernetes.controller.KubeUtils;
 import org.entando.kubernetes.controller.SimpleKeycloakClient;
-import org.entando.kubernetes.controller.creators.DeploymentCreator;
 import org.entando.kubernetes.controller.creators.KeycloakClientCreator;
 import org.entando.kubernetes.controller.inprocesstest.InProcessTestUtil;
 import org.entando.kubernetes.controller.inprocesstest.argumentcaptors.KeycloakClientConfigArgumentCaptor;
@@ -63,6 +63,7 @@ import org.entando.kubernetes.controller.inprocesstest.k8sclientdouble.EntandoRe
 import org.entando.kubernetes.controller.inprocesstest.k8sclientdouble.SimpleK8SClientDouble;
 import org.entando.kubernetes.controller.k8sclient.SimpleK8SClient;
 import org.entando.kubernetes.controller.plugin.EntandoPluginController;
+import org.entando.kubernetes.controller.spi.DeployableContainer;
 import org.entando.kubernetes.controller.test.support.FluentTraversals;
 import org.entando.kubernetes.controller.test.support.VariableReferenceAssertions;
 import org.entando.kubernetes.model.DbmsVendor;
@@ -72,6 +73,7 @@ import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Tags;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -79,10 +81,8 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-//in execute component test
-@Tag("in-process")
-
-public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableReferenceAssertions {
+@Tags({@Tag("in-process"), @Tag("pre-deployment"), @Tag("component")})
+class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableReferenceAssertions {
 
     private static final String TCP = "TCP";
     private static final String MY_PLUGIN_DB = MY_PLUGIN + "-db";
@@ -103,10 +103,10 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
     private static final int PORT_3396 = 3306;
     private static final int PORT_8081 = 8081;
     private static final int PORT_8083 = 8083;
-    public static final String PARAMETER_NAME = "MY_PARAM";
-    public static final String PARAMETER_VALUE = "MY_VALUE";
+    static final String PARAMETER_NAME = "MY_PARAM";
+    static final String PARAMETER_VALUE = "MY_VALUE";
     final EntandoPlugin entandoPlugin = new EntandoPluginBuilder(buildTestEntandoPlugin()).editSpec()
-            .withParameters(Collections.singletonMap(PARAMETER_NAME, PARAMETER_VALUE))
+            .withParameters(Collections.singletonList(new EnvVar(PARAMETER_NAME, PARAMETER_VALUE, null)))
             .withNewResourceRequirements()
             .withStorageRequest("8Gi")
             .withStorageLimit("16Gi")
@@ -125,7 +125,7 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
     private EntandoPluginController entandoPluginController;
 
     @BeforeEach
-    public void putApp() {
+    void putApp() {
         client.entandoResources().putEntandoPlugin(entandoPlugin);
         client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
         client.secrets().overwriteControllerSecret(buildKeycloakSecret());
@@ -136,7 +136,7 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
     }
 
     @Test
-    public void testSecrets() {
+    void testSecrets() {
         // Given I have an Entando Plugin with a MySQL Database
         final EntandoPlugin newEntandoPlugin = this.entandoPlugin;
         // And I have a fully deployed KeycloakServer
@@ -172,7 +172,7 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
     }
 
     @Test
-    public void testPersistentVolumeClaims() {
+    void testPersistentVolumeClaims() {
         //Given I have an Entando Plugin with a MySQL Database
         EntandoPlugin newEntandoPlugin = this.entandoPlugin;
         //And that K8S is up and receiving PVC requests
@@ -223,7 +223,7 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
     }
 
     @Test
-    public void testService() {
+    void testService() {
         //Given I have an Entando Plugin with a MySQL Database
         EntandoPlugin newEntandoPlugin = this.entandoPlugin;
         //And that K8S is up and receiving Service requests
@@ -274,7 +274,7 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
     }
 
     @Test
-    public void testDeployments() {
+    void testDeployments() {
         //Given I have configured the controller to use image version 6.0.0 by default
         System.setProperty(EntandoOperatorConfigProperty.ENTANDO_DOCKER_IMAGE_VERSION_FALLBACK.getJvmSystemProperty(), "6.0.0");
         //And I have an Entando Plugin with a MySQL Database and a connectionConfig for pam-connection
@@ -395,7 +395,7 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
         assertThat(theVariableNamed("SPRING_DATASOURCE_URL").on(thePluginContainer),
                 is("jdbc:mysql://" + MY_PLUGIN_DB_SERVICE + "." + MY_PLUGIN_NAMESPACE + ".svc.cluster.local:3306/my_plugin_plugindb"));
         assertThat(theVariableNamed("ENTANDO_CONNECTIONS_ROOT").on(thePluginContainer),
-                is(DeploymentCreator.ENTANDO_SECRET_MOUNTS_ROOT));
+                is(DeployableContainer.ENTANDO_SECRET_MOUNTS_ROOT));
         assertThat(theVariableNamed("ENTANDO_PLUGIN_SECURITY_LEVEL").on(thePluginContainer), is("LENIENT"));
         Quantity cpuRequest = thePluginContainer.getResources().getRequests().get("cpu");
         assertThat(cpuRequest.getAmount(), is("150"));
@@ -433,7 +433,7 @@ public class DeployPluginTest implements InProcessTestUtil, FluentTraversals, Va
     }
 
     @Test
-    public void testSchemaPreparation() {
+    void testSchemaPreparation() {
         //Given I have an Entando Plugin with a MySQL Database
         EntandoPlugin newEntandoPlugin = this.entandoPlugin;
         //When the EntandoPluginController is notified that a new EntandoPlugin has been added

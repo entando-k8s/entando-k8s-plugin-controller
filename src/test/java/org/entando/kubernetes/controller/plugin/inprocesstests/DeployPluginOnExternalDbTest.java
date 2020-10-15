@@ -58,6 +58,7 @@ import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Tags;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -66,15 +67,13 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-//in execute component test
-@Tag("in-process")
+@Tags({@Tag("in-process"), @Tag("pre-deployment"), @Tag("component")})
+class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTraversals {
 
-public class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTraversals {
-
-    public static final String SERVER_PORT = "server-port";
-    public static final int PORT_8081 = 8081;
+    static final String SERVER_PORT = "server-port";
+    static final int PORT_8081 = 8081;
     private static final String MY_PLUGIN_SERVER = MY_PLUGIN + "-server";
-    public static final String MY_PLUGIN_SERVER_SECRET = MY_PLUGIN_SERVER + "-secret";
+    static final String MY_PLUGIN_SERVER_SECRET = MY_PLUGIN_SERVER + "-secret";
     private static final String MY_PLUGIN_PLUGINDB = MY_PLUGIN + "-plugindb";
     private static final String MY_PLUGIN_PLUGINDB_SECRET = MY_PLUGIN_PLUGINDB + "-secret";
     private static final String MYDB_SERVICE_MY_PLUGINNAMESPACE_SVC_CLUSTER_LOCAL =
@@ -91,7 +90,7 @@ public class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTr
             .endSpec().build();
 
     @BeforeEach
-    public void putAppAndDatabase() {
+    void putAppAndDatabase() {
         client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
         client.entandoResources().createOrPatchEntandoResource(externalDatabase);
         client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
@@ -105,7 +104,7 @@ public class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTr
     }
 
     @Test
-    public void testSecrets() {
+    void testSecrets() {
         //Given I have an entando plugin
         //And I have created an EntandoDatabaseService custom resource
         new CreateExternalServiceCommand(externalDatabase).execute(client);
@@ -124,7 +123,7 @@ public class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTr
     }
 
     @Test
-    public void testDeployment() {
+    void testDeployment() {
         //Given I have configured the controller to use image version 6.0.0 by default
         System.setProperty(EntandoOperatorConfigProperty.ENTANDO_DOCKER_IMAGE_VERSION_FALLBACK.getJvmSystemProperty(), "6.0.0");
         //And I have created an EntandoDatabaseService custom resource
@@ -201,7 +200,7 @@ public class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTr
     }
 
     @Test
-    public void testSchemaPreparation() {
+    void testSchemaPreparation() {
         //Given I have an entando plugin
         //And I have created an EntandoDatabaseService custom resource
         new CreateExternalServiceCommand(externalDatabase).execute(client);

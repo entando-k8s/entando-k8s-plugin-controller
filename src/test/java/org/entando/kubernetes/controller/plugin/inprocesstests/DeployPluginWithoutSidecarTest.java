@@ -44,6 +44,7 @@ import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Tags;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -52,15 +53,13 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-//in execute component test
-@Tag("in-process")
+@Tags({@Tag("in-process"), @Tag("pre-deployment"), @Tag("component")})
+class DeployPluginWithoutSidecarTest implements InProcessTestUtil, FluentTraversals {
 
-public class DeployPluginWithoutSidecarTest implements InProcessTestUtil, FluentTraversals {
-
-    public static final String SERVER_PORT = "server-port";
-    public static final int PORT_8081 = 8081;
+    static final String SERVER_PORT = "server-port";
+    static final int PORT_8081 = 8081;
     private static final String MY_PLUGIN_SERVER = MY_PLUGIN + "-server";
-    public static final String MY_PLUGIN_SERVER_SECRET = MY_PLUGIN_SERVER + "-secret";
+    static final String MY_PLUGIN_SERVER_SECRET = MY_PLUGIN_SERVER + "-secret";
     @Spy
     private final SimpleK8SClient<EntandoResourceClientDouble> client = new SimpleK8SClientDouble();
     @Mock
@@ -71,7 +70,7 @@ public class DeployPluginWithoutSidecarTest implements InProcessTestUtil, Fluent
             .build();
 
     @BeforeEach
-    public void putResources() {
+    void putResources() {
         client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
         client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
         client.secrets().overwriteControllerSecret(buildKeycloakSecret());
@@ -84,7 +83,7 @@ public class DeployPluginWithoutSidecarTest implements InProcessTestUtil, Fluent
     }
 
     @Test
-    public void testDeployment() {
+    void testDeployment() {
         //Given I have configured the controller to use image version 6.0.0 by default
         System.setProperty(EntandoOperatorConfigProperty.ENTANDO_DOCKER_IMAGE_VERSION_FALLBACK.getJvmSystemProperty(), "6.0.0");
         //And Keycloak is receiving requests
