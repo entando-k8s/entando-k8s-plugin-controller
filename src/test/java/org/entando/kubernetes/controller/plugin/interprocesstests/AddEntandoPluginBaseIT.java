@@ -3,13 +3,13 @@
  * Copyright 2015-Present Entando Inc. (http://www.entando.com) All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
- * the terms of the GNU Lesser General Public License as published by the Free
+ * the terms of the GNU Lesser General License as published by the Free
  * Software Foundation; either version 2.1 of the License, or (at your option)
  * any later version.
  *
  *  This library is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General License for more
  * details.
  *
  */
@@ -29,7 +29,6 @@ import io.fabric8.kubernetes.client.dsl.PodResource;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import org.entando.kubernetes.controller.KubeUtils;
-import org.entando.kubernetes.controller.common.TlsHelper;
 import org.entando.kubernetes.controller.database.DbmsDockerVendorStrategy;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoOperatorTestConfig;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoOperatorTestConfig.TestTarget;
@@ -46,7 +45,7 @@ import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
-public abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting {
+abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting {
 
     protected static final DbmsVendor DBMS = DbmsVendor.POSTGRESQL;
     protected static final DbmsDockerVendorStrategy DBMS_STRATEGY = DbmsDockerVendorStrategy.forVendor(DBMS);
@@ -66,7 +65,7 @@ public abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting
     }
 
     @BeforeEach
-    public void cleanup() {
+    void cleanup() {
         K8SIntegrationTestHelper helper = this.helper;
         helper.setTextFixture(
                 deleteAll(EntandoDatabaseService.class).fromNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
@@ -89,7 +88,7 @@ public abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting
         return false;
     }
 
-    public void createAndWaitForPlugin(EntandoPlugin plugin, boolean isDbEmbedded) {
+    void createAndWaitForPlugin(EntandoPlugin plugin, boolean isDbEmbedded) {
         helper.ensureKeycloak();
         helper.clusterInfrastructure().ensureInfrastructureSecret();
         String name = plugin.getMetadata().getName();
@@ -98,7 +97,7 @@ public abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting
     }
 
     @AfterEach
-    public void afterwards() {
+    void afterwards() {
 
         helper.afterTest();
     }
@@ -126,7 +125,7 @@ public abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting
         assertThat(thePortNamed("server-port").on(service).getPort(), is(8081));
         assertTrue(serverDeployment.getStatus().getReadyReplicas() >= 1);
         await().atMost(10, TimeUnit.SECONDS)
-                .until(() -> HttpTestHelper.read(TlsHelper.getDefaultProtocol() + "://" + pluginHostName + "/avatarPlugin/index.html")
+                .until(() -> HttpTestHelper.read(HttpTestHelper.getDefaultProtocol() + "://" + pluginHostName + "/avatarPlugin/index.html")
                         .contains("JHipster microservice homepage"));
         assertTrue(helper.entandoPlugins().getOperations()
                 .inNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
@@ -134,7 +133,8 @@ public abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting
                 .fromServer().get().getStatus()
                 .forServerQualifiedBy("server").isPresent());
         await().atMost(10, TimeUnit.SECONDS).until(() -> Arrays.asList(403, 401)
-                .contains(HttpTestHelper.getStatus(TlsHelper.getDefaultProtocol() + "://" + pluginHostName + "/avatarPlugin/api/widgets")));
+                .contains(HttpTestHelper
+                        .getStatus(HttpTestHelper.getDefaultProtocol() + "://" + pluginHostName + "/avatarPlugin/api/widgets")));
     }
 
 }

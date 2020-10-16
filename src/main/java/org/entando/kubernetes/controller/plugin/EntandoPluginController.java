@@ -25,7 +25,6 @@ import org.entando.kubernetes.controller.AbstractDbAwareController;
 import org.entando.kubernetes.controller.DeployCommand;
 import org.entando.kubernetes.controller.KeycloakConnectionConfig;
 import org.entando.kubernetes.controller.KubeUtils;
-import org.entando.kubernetes.controller.ServiceDeploymentResult;
 import org.entando.kubernetes.controller.SimpleKeycloakClient;
 import org.entando.kubernetes.controller.database.DatabaseServiceResult;
 import org.entando.kubernetes.controller.k8sclient.SimpleK8SClient;
@@ -62,8 +61,9 @@ public class EntandoPluginController extends AbstractDbAwareController<EntandoPl
         keycloakClient.login(keycloakConnectionConfig.determineBaseUrl(), keycloakConnectionConfig.getUsername(),
                 keycloakConnectionConfig.getPassword());
         keycloakClient.ensureRealm(KubeUtils.ENTANDO_KEYCLOAK_REALM);
-        DeployCommand<ServiceDeploymentResult> deployPluginServerCommand = new DeployCommand<>(
+        DeployCommand<EntandoPluginDeploymentResult, EntandoPlugin> deployPluginServerCommand = new DeployCommand<>(
                 new EntandoPluginServerDeployable(databaseServiceResult, keycloakConnectionConfig, newEntandoPlugin));
-        deployPluginServerCommand.execute(k8sClient, Optional.of(keycloakClient));
+        EntandoPluginDeploymentResult result = deployPluginServerCommand.execute(k8sClient, Optional.of(keycloakClient));
+        k8sClient.entandoResources().updateStatus(newEntandoPlugin, result.getStatus());
     }
 }

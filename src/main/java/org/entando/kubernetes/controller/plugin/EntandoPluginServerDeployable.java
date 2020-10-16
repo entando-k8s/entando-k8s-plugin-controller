@@ -24,17 +24,15 @@ import java.util.ArrayList;
 import java.util.List;
 import org.entando.kubernetes.controller.KeycloakConnectionConfig;
 import org.entando.kubernetes.controller.KubeUtils;
-import org.entando.kubernetes.controller.ServiceDeploymentResult;
 import org.entando.kubernetes.controller.database.DatabaseServiceResult;
 import org.entando.kubernetes.controller.spi.DbAwareDeployable;
 import org.entando.kubernetes.controller.spi.DeployableContainer;
 import org.entando.kubernetes.controller.spi.IngressingDeployable;
-import org.entando.kubernetes.model.EntandoBaseCustomResource;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
-import org.entando.kubernetes.model.plugin.EntandoPluginSpec;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 
-public class EntandoPluginServerDeployable implements IngressingDeployable<ServiceDeploymentResult>, DbAwareDeployable {
+public class EntandoPluginServerDeployable implements IngressingDeployable<EntandoPluginDeploymentResult, EntandoPlugin>,
+        DbAwareDeployable {
 
     private final DatabaseServiceResult databaseServiceResult;
     private final EntandoPlugin entandoPlugin;
@@ -83,13 +81,13 @@ public class EntandoPluginServerDeployable implements IngressingDeployable<Servi
     }
 
     @Override
-    public EntandoBaseCustomResource<EntandoPluginSpec> getCustomResource() {
+    public EntandoPlugin getCustomResource() {
         return entandoPlugin;
     }
 
     @Override
-    public ServiceDeploymentResult createResult(Deployment deployment, Service service, Ingress ingress, Pod pod) {
-        return new ServiceDeploymentResult(service, ingress);
+    public EntandoPluginDeploymentResult createResult(Deployment deployment, Service service, Ingress ingress, Pod pod) {
+        return new EntandoPluginDeploymentResult(pod, service, ingress);
     }
 
     @Override

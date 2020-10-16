@@ -25,10 +25,10 @@ import java.util.Optional;
 import org.entando.kubernetes.controller.KeycloakClientConfig;
 import org.entando.kubernetes.controller.KeycloakConnectionConfig;
 import org.entando.kubernetes.controller.KubeUtils;
-import org.entando.kubernetes.controller.creators.DeploymentCreator;
 import org.entando.kubernetes.controller.database.DatabaseSchemaCreationResult;
 import org.entando.kubernetes.controller.spi.ConfigurableResourceContainer;
 import org.entando.kubernetes.controller.spi.DatabasePopulator;
+import org.entando.kubernetes.controller.spi.DeployableContainer;
 import org.entando.kubernetes.controller.spi.ParameterizableContainer;
 import org.entando.kubernetes.controller.spi.PersistentVolumeAware;
 import org.entando.kubernetes.controller.spi.SpringBootDeployableContainer;
@@ -95,7 +95,7 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAware, 
         vars.add(new EnvVar("PORT", "8081", null));
         vars.add(new EnvVar("SPRING_PROFILES_ACTIVE", "default,prod", null));
         vars.add(new EnvVar("ENTANDO_WIDGETS_FOLDER", "/app/resources/widgets", null));
-        vars.add(new EnvVar("ENTANDO_CONNECTIONS_ROOT", DeploymentCreator.ENTANDO_SECRET_MOUNTS_ROOT, null));
+        vars.add(new EnvVar("ENTANDO_CONNECTIONS_ROOT", DeployableContainer.ENTANDO_SECRET_MOUNTS_ROOT, null));
         vars.add(new EnvVar("ENTANDO_PLUGIN_SECURITY_LEVEL",
                 entandoPlugin.getSpec().getSecurityLevel().orElse(PluginSecurityLevel.STRICT).name(), null));
         vars.add(new EnvVar("PLUGIN_SIDECAR_PORT", "8084", null));
