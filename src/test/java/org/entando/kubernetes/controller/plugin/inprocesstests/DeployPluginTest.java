@@ -106,7 +106,7 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
     static final String PARAMETER_NAME = "MY_PARAM";
     static final String PARAMETER_VALUE = "MY_VALUE";
     final EntandoPlugin entandoPlugin = new EntandoPluginBuilder(buildTestEntandoPlugin()).editSpec()
-            .withParameters(Collections.singletonList(new EnvVar(PARAMETER_NAME, PARAMETER_VALUE, null)))
+            .withEnvironmentVariables(Collections.singletonList(new EnvVar(PARAMETER_NAME, PARAMETER_VALUE, null)))
             .withNewResourceRequirements()
             .withStorageRequest("8Gi")
             .withStorageLimit("16Gi")

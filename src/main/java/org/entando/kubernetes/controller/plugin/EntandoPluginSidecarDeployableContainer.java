@@ -69,7 +69,7 @@ public class EntandoPluginSidecarDeployableContainer implements DeployableContai
     }
 
     @Override
-    public int getPort() {
+    public int getPrimaryPort() {
         return 8084;
     }
 
