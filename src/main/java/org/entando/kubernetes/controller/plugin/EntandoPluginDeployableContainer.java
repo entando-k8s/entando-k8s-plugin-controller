@@ -81,7 +81,7 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAware, 
     }
 
     @Override
-    public int getPort() {
+    public int getPrimaryPort() {
         return 8081;
     }
 
