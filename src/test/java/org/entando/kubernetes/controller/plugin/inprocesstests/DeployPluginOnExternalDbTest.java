@@ -77,7 +77,7 @@ class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTraversal
     private static final String MY_PLUGIN_PLUGINDB = MY_PLUGIN + "-plugindb";
     private static final String MY_PLUGIN_PLUGINDB_SECRET = MY_PLUGIN_PLUGINDB + "-secret";
     private static final String MYDB_SERVICE_MY_PLUGINNAMESPACE_SVC_CLUSTER_LOCAL =
-            "mydb-service." + MY_PLUGIN_NAMESPACE + ".svc.cluster.local";
+            "mydb-db-service." + MY_PLUGIN_NAMESPACE + ".svc.cluster.local";
     private static final String DATABASE_NAME = "DATABASE_NAME";
     private static final String DATABASE_SERVER_HOST = "DATABASE_SERVER_HOST";
     private final EntandoDatabaseService externalDatabase = buildEntandoDatabaseService();
@@ -164,7 +164,7 @@ class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTraversal
         assertThat(serverContainer.getImage(), is("docker.io/entando/myplugin:6.0.0"));
 
         assertThat(theVariableNamed("SPRING_DATASOURCE_URL").on(thePrimaryContainerOn(serverDeployment)),
-                is("jdbc:oracle:thin:@//mydb-service." + MY_PLUGIN_NAMESPACE + ".svc.cluster.local:1521/my_db"));
+                is("jdbc:oracle:thin:@//" + MYDB_SERVICE_MY_PLUGINNAMESPACE_SVC_CLUSTER_LOCAL + ":1521/my_db"));
         assertThat(theVariableReferenceNamed("SPRING_DATASOURCE_USERNAME").on(thePrimaryContainerOn(serverDeployment)).getSecretKeyRef()
                         .getName(),
                 is(MY_PLUGIN_PLUGINDB_SECRET));
