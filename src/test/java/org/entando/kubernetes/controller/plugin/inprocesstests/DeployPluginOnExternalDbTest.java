@@ -94,7 +94,7 @@ class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTraversal
         client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
         client.entandoResources().createOrPatchEntandoResource(externalDatabase);
         client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
-        client.secrets().overwriteControllerSecret(buildKeycloakSecret());
+        emulateKeycloakDeployment(client);
         entandoPluginController = new EntandoPluginController(client, keycloakClient);
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_ACTION, Action.ADDED.name());
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_NAME, entandoPlugin.getMetadata().getName());

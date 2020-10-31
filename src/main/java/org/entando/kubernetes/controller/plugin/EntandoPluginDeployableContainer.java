@@ -34,6 +34,8 @@ import org.entando.kubernetes.controller.spi.PersistentVolumeAware;
 import org.entando.kubernetes.controller.spi.SpringBootDeployableContainer;
 import org.entando.kubernetes.model.DbmsVendor;
 import org.entando.kubernetes.model.EntandoDeploymentSpec;
+import org.entando.kubernetes.model.KeycloakToUse;
+import org.entando.kubernetes.model.app.KeycloakAwareSpec;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 
@@ -107,13 +109,18 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAware, 
 
     @Override
     public KeycloakClientConfig getKeycloakClientConfig() {
-        return new KeycloakClientConfig(KubeUtils.ENTANDO_KEYCLOAK_REALM,
+        return new KeycloakClientConfig(determineRealm(),
                 entandoPlugin.getMetadata().getName() + "-" + getNameQualifier(),
                 entandoPlugin.getMetadata().getName(), entandoPlugin.getSpec().getRoles(),
                 entandoPlugin.getSpec().getPermissions())
                 .withRole(KubeUtils.ENTANDO_APP_ROLE)
                 .withPermission(EntandoPluginSidecarDeployableContainer.keycloakClientIdOf(entandoPlugin),
                         EntandoPluginSidecarDeployableContainer.REQUIRED_ROLE);
+    }
+
+    @Override
+    public KeycloakAwareSpec getKeycloakAwareSpec() {
+        return entandoPlugin.getSpec();
     }
 
     @Override
@@ -143,6 +150,6 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAware, 
 
     @Override
     public EntandoDeploymentSpec getCustomResourceSpec() {
-        return entandoPlugin.getSpec();
+        return getKeycloakAwareSpec();
     }
 }

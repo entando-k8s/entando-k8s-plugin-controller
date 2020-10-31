@@ -81,8 +81,7 @@ class DeployPluginWithoutDbTest implements InProcessTestUtil, FluentTraversals {
     @BeforeEach
     void putResources() {
         client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
-        client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
-        client.secrets().overwriteControllerSecret(buildKeycloakSecret());
+        emulateKeycloakDeployment(client);
         entandoPluginController = new EntandoPluginController(client, keycloakClient);
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_ACTION, Action.ADDED.name());
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_NAME, entandoPlugin.getMetadata().getName());

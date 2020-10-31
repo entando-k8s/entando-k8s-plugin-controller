@@ -54,7 +54,7 @@ import org.entando.kubernetes.controller.EntandoOperatorConfigProperty;
 import org.entando.kubernetes.controller.KeycloakClientConfig;
 import org.entando.kubernetes.controller.KubeUtils;
 import org.entando.kubernetes.controller.SimpleKeycloakClient;
-import org.entando.kubernetes.controller.creators.KeycloakClientCreator;
+import org.entando.kubernetes.controller.common.KeycloakName;
 import org.entando.kubernetes.controller.inprocesstest.InProcessTestUtil;
 import org.entando.kubernetes.controller.inprocesstest.argumentcaptors.KeycloakClientConfigArgumentCaptor;
 import org.entando.kubernetes.controller.inprocesstest.argumentcaptors.LabeledArgumentCaptor;
@@ -128,7 +128,7 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
     void putApp() {
         client.entandoResources().putEntandoPlugin(entandoPlugin);
         client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
-        client.secrets().overwriteControllerSecret(buildKeycloakSecret());
+        emulateKeycloakDeployment(client);
         entandoPluginController = new EntandoPluginController(client, keycloakClient);
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_ACTION, Action.ADDED.name());
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_NAME, entandoPlugin.getMetadata().getName());
@@ -166,8 +166,8 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
         NamedArgumentCaptor<Secret> keycloakSecretCaptor = forResourceNamed(Secret.class, MY_PLUGIN_SERVER_SECRET);
         verify(client.secrets(), atLeastOnce()).createSecretIfAbsent(eq(newEntandoPlugin), keycloakSecretCaptor.capture());
         Secret keycloakSecret = keycloakSecretCaptor.getValue();
-        assertThat(keycloakSecret.getStringData().get(KeycloakClientCreator.CLIENT_ID_KEY), is(MY_PLUGIN_SERVER));
-        assertThat(keycloakSecret.getStringData().get(KeycloakClientCreator.CLIENT_SECRET_KEY), is(KEYCLOAK_SECRET));
+        assertThat(keycloakSecret.getStringData().get(KeycloakName.CLIENT_ID_KEY), is(MY_PLUGIN_SERVER));
+        assertThat(keycloakSecret.getStringData().get(KeycloakName.CLIENT_SECRET_KEY), is(KEYCLOAK_SECRET));
 
     }
 

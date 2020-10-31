@@ -70,29 +70,17 @@ abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting {
         helper.setTextFixture(
                 deleteAll(EntandoDatabaseService.class).fromNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
                         .deleteAll(EntandoPlugin.class).fromNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
-                        .deleteAll(EntandoKeycloakServer.class).fromNamespace(KeycloakIntegrationTestHelper.KEYCLOAK_NAMESPACE)
         );
-        await().atMost(2, TimeUnit.MINUTES).ignoreExceptions().pollInterval(10, TimeUnit.SECONDS).until(this::killPgPod);
+        helper.externalDatabases().deletePgTestPod(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE);
         registerListeners(helper);
         //Determine best guess hostnames for the Entando DE App Ingress
         pluginHostName = EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "." + helper.getDomainSuffix();
     }
 
-    private boolean killPgPod() {
-        PodResource<Pod, DoneablePod> resource = helper.getClient().pods()
-                .inNamespace(KeycloakIntegrationTestHelper.KEYCLOAK_NAMESPACE).withName("pg-test");
-        if (resource.fromServer().get() == null) {
-            return true;
-        }
-        resource.delete();
-        return false;
-    }
-
     void createAndWaitForPlugin(EntandoPlugin plugin, boolean isDbEmbedded) {
-        helper.ensureKeycloak();
         helper.clusterInfrastructure().ensureInfrastructureSecret();
         String name = plugin.getMetadata().getName();
-        helper.keycloak().deleteKeycloakClients(name + "-" + KubeUtils.DEFAULT_SERVER_QUALIFIER, name + "-sidecar");
+        helper.keycloak().deleteKeycloakClients(plugin, name + "-" + KubeUtils.DEFAULT_SERVER_QUALIFIER, name + "-sidecar");
         helper.entandoPlugins().createAndWaitForPlugin(plugin, isDbEmbedded);
     }
 
