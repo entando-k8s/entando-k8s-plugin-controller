@@ -86,14 +86,13 @@ class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTraversal
     @Mock
     private SimpleKeycloakClient keycloakClient;
     private EntandoPluginController entandoPluginController;
-    private EntandoPlugin entandoPlugin = new EntandoPluginBuilder(buildTestEntandoPlugin()).editSpec().withDbms(DbmsVendor.ORACLE)
+    private EntandoPlugin entandoPlugin = new EntandoPluginBuilder(newTestEntandoPlugin()).editSpec().withDbms(DbmsVendor.ORACLE)
             .endSpec().build();
 
     @BeforeEach
     void putAppAndDatabase() {
-        client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
         client.entandoResources().createOrPatchEntandoResource(externalDatabase);
-        client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
+        emulateClusterInfrastuctureDeployment(client);
         emulateKeycloakDeployment(client);
         entandoPluginController = new EntandoPluginController(client, keycloakClient);
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_ACTION, Action.ADDED.name());
@@ -178,7 +177,6 @@ class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTraversal
                 is(KubeUtils.PASSSWORD_KEY));
 
         //And Keycloak was configured to support OIDC Integration from the EntandoApp
-        verify(keycloakClient).ensureRealm(eq(ENTANDO_KEYCLOAK_REALM));
         verify(keycloakClient, times(2))
                 .login(eq(MY_KEYCLOAK_BASE_URL), eq(MY_KEYCLOAK_ADMIN_USERNAME), anyString());
         KeycloakClientConfigArgumentCaptor keycloakClientConfigCaptor = forClientId(MY_PLUGIN_SERVER);

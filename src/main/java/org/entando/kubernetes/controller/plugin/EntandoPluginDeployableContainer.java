@@ -33,9 +33,8 @@ import org.entando.kubernetes.controller.spi.ParameterizableContainer;
 import org.entando.kubernetes.controller.spi.PersistentVolumeAware;
 import org.entando.kubernetes.controller.spi.SpringBootDeployableContainer;
 import org.entando.kubernetes.model.DbmsVendor;
-import org.entando.kubernetes.model.EntandoDeploymentSpec;
-import org.entando.kubernetes.model.KeycloakToUse;
-import org.entando.kubernetes.model.app.KeycloakAwareSpec;
+import org.entando.kubernetes.model.EntandoIngressingDeploymentSpec;
+import org.entando.kubernetes.model.KeycloakAwareSpec;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 
@@ -149,7 +148,7 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAware, 
     }
 
     @Override
-    public EntandoDeploymentSpec getCustomResourceSpec() {
+    public EntandoIngressingDeploymentSpec getCustomResourceSpec() {
         return getKeycloakAwareSpec();
     }
 }

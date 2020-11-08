@@ -39,7 +39,6 @@ import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.fabric8.kubernetes.api.model.Service;
-import io.fabric8.kubernetes.api.model.ServiceAccount;
 import io.fabric8.kubernetes.api.model.ServiceStatus;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentStatus;
@@ -67,7 +66,6 @@ import org.entando.kubernetes.controller.spi.DeployableContainer;
 import org.entando.kubernetes.controller.test.support.FluentTraversals;
 import org.entando.kubernetes.controller.test.support.VariableReferenceAssertions;
 import org.entando.kubernetes.model.DbmsVendor;
-import org.entando.kubernetes.model.EntandoCustomResource;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
@@ -105,7 +103,7 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
     private static final int PORT_8083 = 8083;
     static final String PARAMETER_NAME = "MY_PARAM";
     static final String PARAMETER_VALUE = "MY_VALUE";
-    final EntandoPlugin entandoPlugin = new EntandoPluginBuilder(buildTestEntandoPlugin()).editSpec()
+    final EntandoPlugin entandoPlugin = new EntandoPluginBuilder(newTestEntandoPlugin()).editSpec()
             .withEnvironmentVariables(Collections.singletonList(new EnvVar(PARAMETER_NAME, PARAMETER_VALUE, null)))
             .withNewResourceRequirements()
             .withStorageRequest("8Gi")
@@ -127,7 +125,7 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
     @BeforeEach
     void putApp() {
         client.entandoResources().putEntandoPlugin(entandoPlugin);
-        client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
+        emulateClusterInfrastuctureDeployment(client);
         emulateKeycloakDeployment(client);
         entandoPluginController = new EntandoPluginController(client, keycloakClient);
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_ACTION, Action.ADDED.name());
@@ -353,10 +351,9 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
 
     }
 
-    private void verifyServiceAccount(EntandoCustomResource newEntandoPlugin, Deployment serverDeployment) {
+    private void verifyServiceAccount(EntandoPlugin newEntandoPlugin, Deployment serverDeployment) {
         assertThat(serverDeployment.getSpec().getTemplate().getSpec().getServiceAccountName(), is("entando-plugin"));
-        NamedArgumentCaptor<ServiceAccount> serviceAccountCaptor = forResourceNamed(ServiceAccount.class, "entando-plugin");
-        verify(client.serviceAccounts()).createServiceAccountIfAbsent(eq(newEntandoPlugin), serviceAccountCaptor.capture());
+        verify(client.serviceAccounts()).findOrCreateServiceAccount(eq(newEntandoPlugin), eq("entando-plugin"));
         NamedArgumentCaptor<Role> roleCaptor = forResourceNamed(Role.class, "entando-plugin");
         verify(client.serviceAccounts()).createRoleIfAbsent(eq(newEntandoPlugin), roleCaptor.capture());
         assertThat(roleCaptor.getValue().getRules().get(0).getResources(), is(Arrays.asList("entandoplugins")));

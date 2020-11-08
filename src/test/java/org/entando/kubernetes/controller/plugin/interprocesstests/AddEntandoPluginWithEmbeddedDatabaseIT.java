@@ -24,6 +24,7 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import java.util.concurrent.TimeUnit;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
+import org.entando.kubernetes.controller.integrationtest.support.KeycloakIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.SampleWriter;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
@@ -40,6 +41,9 @@ class AddEntandoPluginWithEmbeddedDatabaseIT extends AddEntandoPluginBaseIT {
         EntandoPlugin plugin = new EntandoPluginBuilder()
                 .withNewSpec()
                 .withImage("entando/entando-avatar-plugin")
+                .withNewKeycloakToUse()
+                .withRealm(KeycloakIntegrationTestHelper.KEYCLOAK_REALM)
+                .endKeycloakToUse()
                 .withDbms(DBMS)
                 .withReplicas(1)
                 .withIngressHostName(pluginHostName)
