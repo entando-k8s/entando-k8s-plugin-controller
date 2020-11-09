@@ -49,9 +49,11 @@ import io.quarkus.runtime.StartupEvent;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
+import org.entando.kubernetes.controller.EntandoOperatorConfig;
 import org.entando.kubernetes.controller.EntandoOperatorConfigProperty;
 import org.entando.kubernetes.controller.KeycloakClientConfig;
 import org.entando.kubernetes.controller.KubeUtils;
+import org.entando.kubernetes.controller.SecurityMode;
 import org.entando.kubernetes.controller.SimpleKeycloakClient;
 import org.entando.kubernetes.controller.common.KeycloakName;
 import org.entando.kubernetes.controller.inprocesstest.InProcessTestUtil;
@@ -355,13 +357,15 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
         assertThat(serverDeployment.getSpec().getTemplate().getSpec().getServiceAccountName(), is("entando-plugin"));
         verify(client.serviceAccounts()).findOrCreateServiceAccount(eq(newEntandoPlugin), eq("entando-plugin"));
         NamedArgumentCaptor<Role> roleCaptor = forResourceNamed(Role.class, "entando-plugin");
-        verify(client.serviceAccounts()).createRoleIfAbsent(eq(newEntandoPlugin), roleCaptor.capture());
-        assertThat(roleCaptor.getValue().getRules().get(0).getResources(), is(Arrays.asList("entandoplugins")));
-        assertThat(roleCaptor.getValue().getRules().get(0).getVerbs(), is(Arrays.asList("get", "update")));
-        assertThat(roleCaptor.getValue().getRules().get(1).getResources(), is(Arrays.asList("secrets")));
-        assertThat(roleCaptor.getValue().getRules().get(1).getVerbs(), is(Arrays.asList("create", "get", "update", "delete")));
-        NamedArgumentCaptor<RoleBinding> roleBindingCaptor = forResourceNamed(RoleBinding.class, "entando-plugin-rolebinding");
-        verify(client.serviceAccounts()).createRoleBindingIfAbsent(eq(newEntandoPlugin), roleBindingCaptor.capture());
+        if (EntandoOperatorConfig.getOperatorSecurityMode() == SecurityMode.LENIENT) {
+            verify(client.serviceAccounts()).createRoleIfAbsent(eq(newEntandoPlugin), roleCaptor.capture());
+            assertThat(roleCaptor.getValue().getRules().get(0).getResources(), is(Arrays.asList("entandoplugins")));
+            assertThat(roleCaptor.getValue().getRules().get(0).getVerbs(), is(Arrays.asList("get", "update")));
+            assertThat(roleCaptor.getValue().getRules().get(1).getResources(), is(Arrays.asList("secrets")));
+            assertThat(roleCaptor.getValue().getRules().get(1).getVerbs(), is(Arrays.asList("create", "get", "update", "delete")));
+            NamedArgumentCaptor<RoleBinding> roleBindingCaptor = forResourceNamed(RoleBinding.class, "entando-plugin-rolebinding");
+            verify(client.serviceAccounts()).createRoleBindingIfAbsent(eq(newEntandoPlugin), roleBindingCaptor.capture());
+        }
     }
 
     private void verifyPluginServerContainer(Container thePluginContainer) {
