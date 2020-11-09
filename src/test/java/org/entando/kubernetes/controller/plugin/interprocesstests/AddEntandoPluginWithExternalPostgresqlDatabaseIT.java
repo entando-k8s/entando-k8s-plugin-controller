@@ -17,6 +17,7 @@
 package org.entando.kubernetes.controller.plugin.interprocesstests;
 
 import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
+import org.entando.kubernetes.controller.integrationtest.support.KeycloakIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.SampleWriter;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
@@ -38,6 +39,9 @@ class AddEntandoPluginWithExternalPostgresqlDatabaseIT extends AddEntandoPluginB
                 .withImage("entando/entando-avatar-plugin")
                 .withDbms(DBMS)
                 .withReplicas(1)
+                .withNewKeycloakToUse()
+                .withRealm(KeycloakIntegrationTestHelper.KEYCLOAK_REALM)
+                .endKeycloakToUse()
                 .withHealthCheckPath("/management/health")
                 .withIngressPath("/avatarPlugin")
                 .withSecurityLevel(PluginSecurityLevel.LENIENT)

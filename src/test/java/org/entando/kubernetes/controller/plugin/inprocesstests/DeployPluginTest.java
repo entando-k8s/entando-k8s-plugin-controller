@@ -39,7 +39,6 @@ import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.fabric8.kubernetes.api.model.Service;
-import io.fabric8.kubernetes.api.model.ServiceAccount;
 import io.fabric8.kubernetes.api.model.ServiceStatus;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentStatus;
@@ -50,11 +49,13 @@ import io.quarkus.runtime.StartupEvent;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
+import org.entando.kubernetes.controller.EntandoOperatorConfig;
 import org.entando.kubernetes.controller.EntandoOperatorConfigProperty;
 import org.entando.kubernetes.controller.KeycloakClientConfig;
 import org.entando.kubernetes.controller.KubeUtils;
+import org.entando.kubernetes.controller.SecurityMode;
 import org.entando.kubernetes.controller.SimpleKeycloakClient;
-import org.entando.kubernetes.controller.creators.KeycloakClientCreator;
+import org.entando.kubernetes.controller.common.KeycloakName;
 import org.entando.kubernetes.controller.inprocesstest.InProcessTestUtil;
 import org.entando.kubernetes.controller.inprocesstest.argumentcaptors.KeycloakClientConfigArgumentCaptor;
 import org.entando.kubernetes.controller.inprocesstest.argumentcaptors.LabeledArgumentCaptor;
@@ -67,7 +68,6 @@ import org.entando.kubernetes.controller.spi.DeployableContainer;
 import org.entando.kubernetes.controller.test.support.FluentTraversals;
 import org.entando.kubernetes.controller.test.support.VariableReferenceAssertions;
 import org.entando.kubernetes.model.DbmsVendor;
-import org.entando.kubernetes.model.EntandoCustomResource;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
@@ -105,7 +105,7 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
     private static final int PORT_8083 = 8083;
     static final String PARAMETER_NAME = "MY_PARAM";
     static final String PARAMETER_VALUE = "MY_VALUE";
-    final EntandoPlugin entandoPlugin = new EntandoPluginBuilder(buildTestEntandoPlugin()).editSpec()
+    final EntandoPlugin entandoPlugin = new EntandoPluginBuilder(newTestEntandoPlugin()).editSpec()
             .withEnvironmentVariables(Collections.singletonList(new EnvVar(PARAMETER_NAME, PARAMETER_VALUE, null)))
             .withNewResourceRequirements()
             .withStorageRequest("8Gi")
@@ -127,8 +127,8 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
     @BeforeEach
     void putApp() {
         client.entandoResources().putEntandoPlugin(entandoPlugin);
-        client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
-        client.secrets().overwriteControllerSecret(buildKeycloakSecret());
+        emulateClusterInfrastuctureDeployment(client);
+        emulateKeycloakDeployment(client);
         entandoPluginController = new EntandoPluginController(client, keycloakClient);
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_ACTION, Action.ADDED.name());
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_NAME, entandoPlugin.getMetadata().getName());
@@ -166,8 +166,8 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
         NamedArgumentCaptor<Secret> keycloakSecretCaptor = forResourceNamed(Secret.class, MY_PLUGIN_SERVER_SECRET);
         verify(client.secrets(), atLeastOnce()).createSecretIfAbsent(eq(newEntandoPlugin), keycloakSecretCaptor.capture());
         Secret keycloakSecret = keycloakSecretCaptor.getValue();
-        assertThat(keycloakSecret.getStringData().get(KeycloakClientCreator.CLIENT_ID_KEY), is(MY_PLUGIN_SERVER));
-        assertThat(keycloakSecret.getStringData().get(KeycloakClientCreator.CLIENT_SECRET_KEY), is(KEYCLOAK_SECRET));
+        assertThat(keycloakSecret.getStringData().get(KeycloakName.CLIENT_ID_KEY), is(MY_PLUGIN_SERVER));
+        assertThat(keycloakSecret.getStringData().get(KeycloakName.CLIENT_SECRET_KEY), is(KEYCLOAK_SECRET));
 
     }
 
@@ -353,18 +353,19 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
 
     }
 
-    private void verifyServiceAccount(EntandoCustomResource newEntandoPlugin, Deployment serverDeployment) {
+    private void verifyServiceAccount(EntandoPlugin newEntandoPlugin, Deployment serverDeployment) {
         assertThat(serverDeployment.getSpec().getTemplate().getSpec().getServiceAccountName(), is("entando-plugin"));
-        NamedArgumentCaptor<ServiceAccount> serviceAccountCaptor = forResourceNamed(ServiceAccount.class, "entando-plugin");
-        verify(client.serviceAccounts()).createServiceAccountIfAbsent(eq(newEntandoPlugin), serviceAccountCaptor.capture());
+        verify(client.serviceAccounts()).findOrCreateServiceAccount(eq(newEntandoPlugin), eq("entando-plugin"));
         NamedArgumentCaptor<Role> roleCaptor = forResourceNamed(Role.class, "entando-plugin");
-        verify(client.serviceAccounts()).createRoleIfAbsent(eq(newEntandoPlugin), roleCaptor.capture());
-        assertThat(roleCaptor.getValue().getRules().get(0).getResources(), is(Arrays.asList("entandoplugins")));
-        assertThat(roleCaptor.getValue().getRules().get(0).getVerbs(), is(Arrays.asList("get", "update")));
-        assertThat(roleCaptor.getValue().getRules().get(1).getResources(), is(Arrays.asList("secrets")));
-        assertThat(roleCaptor.getValue().getRules().get(1).getVerbs(), is(Arrays.asList("create", "get", "update", "delete")));
-        NamedArgumentCaptor<RoleBinding> roleBindingCaptor = forResourceNamed(RoleBinding.class, "entando-plugin-rolebinding");
-        verify(client.serviceAccounts()).createRoleBindingIfAbsent(eq(newEntandoPlugin), roleBindingCaptor.capture());
+        if (EntandoOperatorConfig.getOperatorSecurityMode() == SecurityMode.LENIENT) {
+            verify(client.serviceAccounts()).createRoleIfAbsent(eq(newEntandoPlugin), roleCaptor.capture());
+            assertThat(roleCaptor.getValue().getRules().get(0).getResources(), is(Arrays.asList("entandoplugins")));
+            assertThat(roleCaptor.getValue().getRules().get(0).getVerbs(), is(Arrays.asList("get", "update")));
+            assertThat(roleCaptor.getValue().getRules().get(1).getResources(), is(Arrays.asList("secrets")));
+            assertThat(roleCaptor.getValue().getRules().get(1).getVerbs(), is(Arrays.asList("create", "get", "update", "delete")));
+            NamedArgumentCaptor<RoleBinding> roleBindingCaptor = forResourceNamed(RoleBinding.class, "entando-plugin-rolebinding");
+            verify(client.serviceAccounts()).createRoleBindingIfAbsent(eq(newEntandoPlugin), roleBindingCaptor.capture());
+        }
     }
 
     private void verifyPluginServerContainer(Container thePluginContainer) {

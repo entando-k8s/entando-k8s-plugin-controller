@@ -65,15 +65,14 @@ class DeployPluginWithoutSidecarTest implements InProcessTestUtil, FluentTravers
     @Mock
     private SimpleKeycloakClient keycloakClient;
     private EntandoPluginController entandoPluginController;
-    private EntandoPlugin entandoPlugin = new EntandoPluginBuilder(buildTestEntandoPlugin()).editSpec()
+    private EntandoPlugin entandoPlugin = new EntandoPluginBuilder(newTestEntandoPlugin()).editSpec()
             .withSecurityLevel(PluginSecurityLevel.STRICT).withDbms(DbmsVendor.NONE).endSpec()
             .build();
 
     @BeforeEach
     void putResources() {
-        client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
-        client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
-        client.secrets().overwriteControllerSecret(buildKeycloakSecret());
+        emulateClusterInfrastuctureDeployment(client);
+        emulateKeycloakDeployment(client);
         entandoPluginController = new EntandoPluginController(client, keycloakClient);
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_ACTION, Action.ADDED.name());
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_NAME, entandoPlugin.getMetadata().getName());

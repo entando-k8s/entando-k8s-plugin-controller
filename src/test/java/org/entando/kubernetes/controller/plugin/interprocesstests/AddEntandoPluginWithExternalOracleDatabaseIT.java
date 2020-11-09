@@ -19,6 +19,7 @@ package org.entando.kubernetes.controller.plugin.interprocesstests;
 import static org.entando.kubernetes.controller.KubeUtils.snakeCaseOf;
 
 import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
+import org.entando.kubernetes.controller.integrationtest.support.KeycloakIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.SampleWriter;
 import org.entando.kubernetes.controller.plugin.EntandoPluginDeployableContainer;
 import org.entando.kubernetes.model.DbmsVendor;
@@ -43,6 +44,9 @@ class AddEntandoPluginWithExternalOracleDatabaseIT extends AddEntandoPluginBaseI
         EntandoPlugin plugin = new EntandoPluginBuilder().withNewSpec().withImage("entando/entando-avatar-plugin")
                 .withDbms(DbmsVendor.ORACLE)
                 .withReplicas(1)
+                .withNewKeycloakToUse()
+                .withRealm(KeycloakIntegrationTestHelper.KEYCLOAK_REALM)
+                .endKeycloakToUse()
                 .withIngressHostName(pluginHostName)
                 .withIngressPath("/avatarPlugin")
                 .withHealthCheckPath("/management/health")

@@ -22,14 +22,14 @@ import java.util.List;
 import java.util.Optional;
 import org.entando.kubernetes.controller.KeycloakClientConfig;
 import org.entando.kubernetes.controller.KeycloakConnectionConfig;
-import org.entando.kubernetes.controller.KubeUtils;
 import org.entando.kubernetes.controller.spi.DeployableContainer;
 import org.entando.kubernetes.controller.spi.KeycloakAware;
 import org.entando.kubernetes.controller.spi.KubernetesPermission;
 import org.entando.kubernetes.controller.spi.ParameterizableContainer;
 import org.entando.kubernetes.controller.spi.TlsAware;
-import org.entando.kubernetes.model.EntandoDeploymentSpec;
+import org.entando.kubernetes.model.EntandoIngressingDeploymentSpec;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
+import org.entando.kubernetes.model.plugin.EntandoPluginSpec;
 
 public class EntandoPluginSidecarDeployableContainer implements DeployableContainer, KeycloakAware, TlsAware, ParameterizableContainer {
 
@@ -85,7 +85,7 @@ public class EntandoPluginSidecarDeployableContainer implements DeployableContai
     @Override
     public KeycloakClientConfig getKeycloakClientConfig() {
         String clientId = keycloakClientIdOf(this.entandoPlugin);
-        return new KeycloakClientConfig(KubeUtils.ENTANDO_KEYCLOAK_REALM, clientId, clientId).withRole(REQUIRED_ROLE);
+        return new KeycloakClientConfig(determineRealm(), clientId, clientId).withRole(REQUIRED_ROLE);
     }
 
     @Override
@@ -105,7 +105,12 @@ public class EntandoPluginSidecarDeployableContainer implements DeployableContai
     }
 
     @Override
-    public EntandoDeploymentSpec getCustomResourceSpec() {
+    public EntandoIngressingDeploymentSpec getCustomResourceSpec() {
+        return getKeycloakAwareSpec();
+    }
+
+    @Override
+    public EntandoPluginSpec getKeycloakAwareSpec() {
         return entandoPlugin.getSpec();
     }
 }

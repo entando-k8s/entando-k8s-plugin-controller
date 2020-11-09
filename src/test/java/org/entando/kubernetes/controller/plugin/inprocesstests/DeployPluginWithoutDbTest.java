@@ -75,14 +75,13 @@ class DeployPluginWithoutDbTest implements InProcessTestUtil, FluentTraversals {
     @Mock
     private SimpleKeycloakClient keycloakClient;
     private EntandoPluginController entandoPluginController;
-    private EntandoPlugin entandoPlugin = new EntandoPluginBuilder(buildTestEntandoPlugin()).editSpec().withDbms(DbmsVendor.NONE).endSpec()
+    private EntandoPlugin entandoPlugin = new EntandoPluginBuilder(newTestEntandoPlugin()).editSpec().withDbms(DbmsVendor.NONE).endSpec()
             .build();
 
     @BeforeEach
     void putResources() {
-        client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
-        client.secrets().overwriteControllerSecret(buildInfrastructureSecret());
-        client.secrets().overwriteControllerSecret(buildKeycloakSecret());
+        emulateClusterInfrastuctureDeployment(client);
+        emulateKeycloakDeployment(client);
         entandoPluginController = new EntandoPluginController(client, keycloakClient);
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_ACTION, Action.ADDED.name());
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_NAME, entandoPlugin.getMetadata().getName());
@@ -147,8 +146,7 @@ class DeployPluginWithoutDbTest implements InProcessTestUtil, FluentTraversals {
         assertFalse(pluginContainer.getEnv().stream().anyMatch(envVar -> envVar.getName().equalsIgnoreCase("SPRING_DATASOURCE_URL")));
         assertFalse(pluginContainer.getEnv().stream().anyMatch(envVar -> envVar.getName().equalsIgnoreCase("SPRING_DATASOURCE_USERNAME")));
         assertFalse(pluginContainer.getEnv().stream().anyMatch(envVar -> envVar.getName().equalsIgnoreCase("SPRING_DATASOURCE_PASSWORD")));
-        //And Keycloak was configured to support OIDC Integration from the EntandoApp
-        verify(keycloakClient).ensureRealm(eq(ENTANDO_KEYCLOAK_REALM));
+        //And Keycloak was configured to support OIDC Integration from the EntandoPlugin
         verify(keycloakClient, times(2))
                 .login(eq(MY_KEYCLOAK_BASE_URL), eq(MY_KEYCLOAK_ADMIN_USERNAME), anyString());
         KeycloakClientConfigArgumentCaptor keycloakClientConfigCaptor = forClientId(MY_PLUGIN_SERVER);

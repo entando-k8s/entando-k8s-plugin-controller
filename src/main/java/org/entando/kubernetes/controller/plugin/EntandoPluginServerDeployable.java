@@ -29,9 +29,10 @@ import org.entando.kubernetes.controller.spi.DbAwareDeployable;
 import org.entando.kubernetes.controller.spi.DeployableContainer;
 import org.entando.kubernetes.controller.spi.IngressingDeployable;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
+import org.entando.kubernetes.model.plugin.EntandoPluginSpec;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 
-public class EntandoPluginServerDeployable implements IngressingDeployable<EntandoPluginDeploymentResult, EntandoPlugin>,
+public class EntandoPluginServerDeployable implements IngressingDeployable<EntandoPluginDeploymentResult, EntandoPluginSpec>,
         DbAwareDeployable {
 
     private final DatabaseServiceResult databaseServiceResult;
