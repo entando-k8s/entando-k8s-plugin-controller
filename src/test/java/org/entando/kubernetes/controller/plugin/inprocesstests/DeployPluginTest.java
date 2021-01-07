@@ -442,7 +442,7 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
 
         //Then a Pod  is created that has labels linking it to the previously created EntandoApp
         LabeledArgumentCaptor<Pod> podCaptor = forResourceWithLabel(Pod.class, ENTANDO_PLUGIN_LABEL_NAME, MY_PLUGIN)
-                .andWithLabel(KubeUtils.DB_JOB_LABEL_NAME, MY_PLUGIN + "-db-preparation-job");
+                .andWithLabel(KubeUtils.DB_JOB_LABEL_NAME, MY_PLUGIN + "-server-db-job");
         verify(client.pods()).runToCompletion(podCaptor.capture());
         Pod pod = podCaptor.getValue();
         verifySchemaCreationFor(MY_PLUGIN_PLUGINDB_SECRET, pod, MY_PLUGIN + "-plugindb-schema-creation-job");
