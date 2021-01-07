@@ -210,7 +210,7 @@ class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTraversal
         // Then a K8S deployment is created with a name that reflects the EntandoApp name and
         // the fact that it is a DB Deployment
         LabeledArgumentCaptor<Pod> podCaptor = forResourceWithLabel(Pod.class, ENTANDO_PLUGIN_LABEL_NAME, MY_PLUGIN)
-                .andWithLabel(KubeUtils.DB_JOB_LABEL_NAME, MY_PLUGIN + "-db-preparation-job");
+                .andWithLabel(KubeUtils.DB_JOB_LABEL_NAME, MY_PLUGIN + "-server-db-job");
 
         verify(client.pods()).runToCompletion(podCaptor.capture());
         Pod thePod = podCaptor.getAllValues().get(0);

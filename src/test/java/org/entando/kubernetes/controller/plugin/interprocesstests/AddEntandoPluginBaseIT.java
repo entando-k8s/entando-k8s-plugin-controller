@@ -85,7 +85,7 @@ abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting {
 
     protected void verifyPluginDatabasePreparation() {
         Pod pod = helper.getClient().pods().inNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
-                .withLabel(KubeUtils.DB_JOB_LABEL_NAME, EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-db-preparation-job")
+                .withLabel(KubeUtils.DB_JOB_LABEL_NAME, EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-server-db-job")
                 .list().getItems().get(0);
         assertThat(theInitContainerNamed(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-plugindb-schema-creation-job").on(pod)
                         .getImage(),
