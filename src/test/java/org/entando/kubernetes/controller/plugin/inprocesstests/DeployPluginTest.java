@@ -65,6 +65,7 @@ import org.entando.kubernetes.controller.inprocesstest.k8sclientdouble.SimpleK8S
 import org.entando.kubernetes.controller.k8sclient.SimpleK8SClient;
 import org.entando.kubernetes.controller.plugin.EntandoPluginController;
 import org.entando.kubernetes.controller.spi.DeployableContainer;
+import org.entando.kubernetes.controller.test.support.CommonLabels;
 import org.entando.kubernetes.controller.test.support.FluentTraversals;
 import org.entando.kubernetes.controller.test.support.VariableReferenceAssertions;
 import org.entando.kubernetes.model.DbmsVendor;
@@ -82,7 +83,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 @Tags({@Tag("in-process"), @Tag("pre-deployment"), @Tag("component")})
-class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableReferenceAssertions {
+class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableReferenceAssertions, CommonLabels {
 
     private static final String TCP = "TCP";
     private static final String MY_PLUGIN_DB = MY_PLUGIN + "-db";
@@ -441,8 +442,8 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
         entandoPluginController.onStartup(new StartupEvent());
 
         //Then a Pod  is created that has labels linking it to the previously created EntandoApp
-        LabeledArgumentCaptor<Pod> podCaptor = forResourceWithLabel(Pod.class, ENTANDO_PLUGIN_LABEL_NAME, MY_PLUGIN)
-                .andWithLabel(KubeUtils.DB_JOB_LABEL_NAME, MY_PLUGIN + "-server-db-job");
+        LabeledArgumentCaptor<Pod> podCaptor = forResourceWithLabels(Pod.class,
+                dbPreparationJobLabels(newEntandoPlugin, KubeUtils.DEFAULT_SERVER_QUALIFIER));
         verify(client.pods()).runToCompletion(podCaptor.capture());
         Pod pod = podCaptor.getValue();
         verifySchemaCreationFor(MY_PLUGIN_PLUGINDB_SECRET, pod, MY_PLUGIN + "-plugindb-schema-creation-job");

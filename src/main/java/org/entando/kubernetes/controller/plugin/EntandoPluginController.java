@@ -31,7 +31,7 @@ import org.entando.kubernetes.model.DbmsVendor;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginSpec;
 
-public class EntandoPluginController extends AbstractDbAwareController<EntandoPlugin> {
+public class EntandoPluginController extends AbstractDbAwareController<EntandoPluginSpec, EntandoPlugin> {
 
     @Inject
     public EntandoPluginController(KubernetesClient kubernetesClient) {
@@ -55,7 +55,7 @@ public class EntandoPluginController extends AbstractDbAwareController<EntandoPl
         DatabaseServiceResult databaseServiceResult = null;
         DbmsVendor dbmsVendor = newEntandoPlugin.getSpec().getDbms().orElse(DbmsVendor.NONE);
         if (dbmsVendor != DbmsVendor.NONE) {
-            databaseServiceResult = prepareDatabaseService(newEntandoPlugin, dbmsVendor, "db");
+            databaseServiceResult = prepareDatabaseService(newEntandoPlugin, dbmsVendor);
         }
         KeycloakConnectionConfig keycloakConnectionConfig = k8sClient.entandoResources().findKeycloak(newEntandoPlugin);
         keycloakClient.login(keycloakConnectionConfig.determineBaseUrl(), keycloakConnectionConfig.getUsername(),
