@@ -49,7 +49,7 @@ class AddEntandoPluginWithContainerizedDatabaseIT extends AddEntandoPluginBaseIT
     }
 
     @ParameterizedTest
-    @EnumSource(value = EntandoOperatorComplianceMode.class, names = {"redhat", "community"})
+    @EnumSource(value = EntandoOperatorComplianceMode.class, names = {"REDHAT", "COMMUNITY"})
     void testCreate(EntandoOperatorComplianceMode complianceMode) {
         System.setProperty(EntandoOperatorConfigProperty.ENTANDO_K8S_OPERATOR_COMPLIANCE_MODE.getJvmSystemProperty(),
                 complianceMode.name().toLowerCase(Locale.ROOT));
