@@ -26,9 +26,11 @@ import java.util.Optional;
 import org.entando.kubernetes.controller.KeycloakClientConfig;
 import org.entando.kubernetes.controller.KeycloakConnectionConfig;
 import org.entando.kubernetes.controller.KubeUtils;
+import org.entando.kubernetes.controller.common.DockerImageInfo;
 import org.entando.kubernetes.controller.database.DatabaseSchemaCreationResult;
 import org.entando.kubernetes.controller.spi.ConfigurableResourceContainer;
 import org.entando.kubernetes.controller.spi.DatabasePopulator;
+import org.entando.kubernetes.controller.spi.DefaultDockerImageInfo;
 import org.entando.kubernetes.controller.spi.DeployableContainer;
 import org.entando.kubernetes.controller.spi.ParameterizableContainer;
 import org.entando.kubernetes.controller.spi.PersistentVolumeAware;
@@ -72,9 +74,10 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAware, 
         return entandoPlugin.getSpec().getConnectionConfigNames();
     }
 
+
     @Override
-    public String determineImageToUse() {
-        return entandoPlugin.getSpec().getImage();
+    public DockerImageInfo getDockerImageInfo() {
+        return new DefaultDockerImageInfo(entandoPlugin.getSpec().getImage());
     }
 
     @Override

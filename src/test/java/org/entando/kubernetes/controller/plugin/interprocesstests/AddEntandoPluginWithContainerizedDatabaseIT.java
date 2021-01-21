@@ -18,26 +18,41 @@ package org.entando.kubernetes.controller.plugin.interprocesstests;
 
 import static java.lang.String.format;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.core.Is.is;
 
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
+import org.entando.kubernetes.controller.EntandoOperatorComplianceMode;
+import org.entando.kubernetes.controller.EntandoOperatorConfig;
+import org.entando.kubernetes.controller.EntandoOperatorConfigProperty;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.KeycloakIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.SampleWriter;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Tags;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 @Tags({@Tag("end-to-end"), @Tag("inter-process"), @Tag("smoke-test"), @Tag("post-deployment")})
-class AddEntandoPluginWithEmbeddedDatabaseIT extends AddEntandoPluginBaseIT {
+class AddEntandoPluginWithContainerizedDatabaseIT extends AddEntandoPluginBaseIT {
 
-    @Test
-    void testCreate() {
+    @AfterEach
+    void resetComplianceMode() {
+        System.clearProperty(EntandoOperatorConfigProperty.ENTANDO_K8S_OPERATOR_COMPLIANCE_MODE.getJvmSystemProperty());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = EntandoOperatorComplianceMode.class, names = {"redhat", "community"})
+    void testCreate(EntandoOperatorComplianceMode complianceMode) {
+        System.setProperty(EntandoOperatorConfigProperty.ENTANDO_K8S_OPERATOR_COMPLIANCE_MODE.getJvmSystemProperty(),
+                complianceMode.name().toLowerCase(Locale.ROOT));
         EntandoPlugin plugin = new EntandoPluginBuilder()
                 .withNewSpec()
                 .withImage("entando/entando-avatar-plugin")
@@ -69,6 +84,11 @@ class AddEntandoPluginWithEmbeddedDatabaseIT extends AddEntandoPluginBaseIT {
                         .on(theContainerNamed("db-container").on(deployment))
                         .getContainerPort(),
                 is(DBMS_STRATEGY.getPort()));
+        if (EntandoOperatorConfig.getComplianceMode() == EntandoOperatorComplianceMode.COMMUNITY) {
+            assertThat(thePrimaryContainerOn(deployment).getImage(), containsString("centos/postgresql-12-centos7"));
+        } else {
+            assertThat(thePrimaryContainerOn(deployment).getImage(), containsString("rhel8/postgresql-12"));
+        }
         Service dbService = helper.getClient().services().inNamespace(plugin.getMetadata().getNamespace())
                 .withName(plugin.getMetadata().getName() + "-db-service").fromServer().get();
         assertThat(thePortNamed(DB_PORT).on(dbService).getPort(), is(DBMS_STRATEGY.getPort()));
