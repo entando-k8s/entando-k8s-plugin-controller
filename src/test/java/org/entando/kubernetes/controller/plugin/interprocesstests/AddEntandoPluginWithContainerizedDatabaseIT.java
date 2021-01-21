@@ -44,13 +44,16 @@ import org.junit.jupiter.params.provider.EnumSource;
 class AddEntandoPluginWithContainerizedDatabaseIT extends AddEntandoPluginBaseIT {
 
     @AfterEach
-    void resetComplianceMode() {
+    void resetSystemProperties() {
         System.clearProperty(EntandoOperatorConfigProperty.ENTANDO_K8S_OPERATOR_COMPLIANCE_MODE.getJvmSystemProperty());
+        System.clearProperty(EntandoOperatorConfigProperty.ENTANDO_K8S_OPERATOR_IMAGE_PULL_SECRETS.getJvmSystemProperty());
     }
 
     @ParameterizedTest
     @EnumSource(value = EntandoOperatorComplianceMode.class, names = {"REDHAT", "COMMUNITY"})
     void testCreate(EntandoOperatorComplianceMode complianceMode) {
+        System.setProperty(EntandoOperatorConfigProperty.ENTANDO_K8S_OPERATOR_IMAGE_PULL_SECRETS.getJvmSystemProperty(), "redhat-registry");
+
         System.setProperty(EntandoOperatorConfigProperty.ENTANDO_K8S_OPERATOR_COMPLIANCE_MODE.getJvmSystemProperty(),
                 complianceMode.name().toLowerCase(Locale.ROOT));
         EntandoPlugin plugin = new EntandoPluginBuilder()
