@@ -54,12 +54,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 @Tags({@Tag("in-process"), @Tag("pre-deployment"), @Tag("component")})
+//because SONAR doesn't recognize custome matchers and captors
+@SuppressWarnings({"java:S6068", "java:S6073"})
 class DeployPluginWithoutSidecarTest implements InProcessTestUtil, FluentTraversals {
 
     static final String SERVER_PORT = "server-port";
     static final int PORT_8081 = 8081;
     private static final String MY_PLUGIN_SERVER = MY_PLUGIN + "-server";
-    static final String MY_PLUGIN_SERVER_SECRET = MY_PLUGIN_SERVER + "-secret";
     @Spy
     private final SimpleK8SClient<EntandoResourceClientDouble> client = new SimpleK8SClientDouble();
     @Mock

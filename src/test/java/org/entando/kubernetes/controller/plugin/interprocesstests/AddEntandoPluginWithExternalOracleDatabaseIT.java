@@ -31,7 +31,6 @@ import org.junit.jupiter.api.Tags;
 import org.junit.jupiter.api.Test;
 
 @Tags({@Tag("end-to-end-disabled"), @Tag("inter-process-disabled"), @Tag("oracle")})
-
 class AddEntandoPluginWithExternalOracleDatabaseIT extends AddEntandoPluginBaseIT {
 
     @Test
@@ -56,7 +55,7 @@ class AddEntandoPluginWithExternalOracleDatabaseIT extends AddEntandoPluginBaseI
         plugin.getMetadata().setName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME);
         SampleWriter.writeSample(plugin, "plugin-with-external-oracle-db");
         createAndWaitForPlugin(plugin, false);
-        verifyPluginServerDeployment();
+        verifyPluginServerDeployment(plugin);
     }
 
 }

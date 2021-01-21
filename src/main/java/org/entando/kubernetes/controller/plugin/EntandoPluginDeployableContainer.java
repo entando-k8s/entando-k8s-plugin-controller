@@ -17,6 +17,7 @@
 package org.entando.kubernetes.controller.plugin;
 
 import io.fabric8.kubernetes.api.model.EnvVar;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -92,7 +93,8 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAware, 
     }
 
     @Override
-    public void addEnvironmentVariables(List<EnvVar> vars) {
+    public List<EnvVar> getEnvironmentVariables() {
+        List<EnvVar> vars = new ArrayList<>();
         vars.add(new EnvVar("PORT", "8081", null));
         vars.add(new EnvVar("SPRING_PROFILES_ACTIVE", "default,prod", null));
         vars.add(new EnvVar("ENTANDO_WIDGETS_FOLDER", "/app/resources/widgets", null));
@@ -100,6 +102,7 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAware, 
         vars.add(new EnvVar("ENTANDO_PLUGIN_SECURITY_LEVEL",
                 entandoPlugin.getSpec().getSecurityLevel().orElse(PluginSecurityLevel.STRICT).name(), null));
         vars.add(new EnvVar("PLUGIN_SIDECAR_PORT", "8084", null));
+        return vars;
     }
 
     public KeycloakConnectionConfig getKeycloakConnectionConfig() {

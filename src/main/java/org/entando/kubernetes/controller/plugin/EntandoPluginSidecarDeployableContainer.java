@@ -17,6 +17,7 @@
 package org.entando.kubernetes.controller.plugin;
 
 import io.fabric8.kubernetes.api.model.EnvVar;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -74,8 +75,10 @@ public class EntandoPluginSidecarDeployableContainer implements DeployableContai
     }
 
     @Override
-    public void addEnvironmentVariables(List<EnvVar> vars) {
+    public List<EnvVar> getEnvironmentVariables() {
+        List<EnvVar> vars = new ArrayList<>();
         vars.add(new EnvVar("ENTANDO_PLUGIN_NAME", entandoPlugin.getMetadata().getName(), null));
+        return vars;
     }
 
     public KeycloakConnectionConfig getKeycloakConnectionConfig() {

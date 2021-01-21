@@ -83,6 +83,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 @Tags({@Tag("in-process"), @Tag("pre-deployment"), @Tag("component")})
+//because SONAR doesn't recognize custome matchers and captors
+@SuppressWarnings({"java:S6068", "java:S6073"})
 class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableReferenceAssertions, CommonLabels {
 
     private static final String TCP = "TCP";
@@ -425,7 +427,7 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
         //Please note: the docker.io and 6.0.0 my seem counter-intuitive, but it indicates that we are
         //actually controlling the image as intended
         //With the correct version in the configmap this will work as planned
-        assertThat(theDbContainer.getImage(), is("docker.io/entando/mysql-57-centos7:6.0.0"));
+        assertThat(theDbContainer.getImage(), is("docker.io/centos/mysql-80-centos7:latest"));
 
         // And is configured to use the correct username, database and password
         assertThat(theVariableReferenceNamed("MYSQL_ROOT_PASSWORD").on(theDbContainer).getSecretKeyRef().getName(),

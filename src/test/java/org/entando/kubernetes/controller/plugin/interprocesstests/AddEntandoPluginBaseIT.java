@@ -26,6 +26,7 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+import org.entando.kubernetes.controller.EntandoOperatorConfig;
 import org.entando.kubernetes.controller.KubeUtils;
 import org.entando.kubernetes.controller.database.DbmsDockerVendorStrategy;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoOperatorTestConfig;
@@ -36,16 +37,18 @@ import org.entando.kubernetes.controller.integrationtest.support.HttpTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.K8SIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.KeycloakIntegrationTestHelper;
 import org.entando.kubernetes.controller.plugin.EntandoPluginController;
+import org.entando.kubernetes.controller.test.support.CommonLabels;
 import org.entando.kubernetes.model.DbmsVendor;
 import org.entando.kubernetes.model.externaldatabase.EntandoDatabaseService;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
-abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting {
+abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting, CommonLabels {
 
     protected static final DbmsVendor DBMS = DbmsVendor.POSTGRESQL;
-    protected static final DbmsDockerVendorStrategy DBMS_STRATEGY = DbmsDockerVendorStrategy.forVendor(DBMS);
+    protected static final DbmsDockerVendorStrategy DBMS_STRATEGY = DbmsDockerVendorStrategy
+            .forVendor(DBMS, EntandoOperatorConfig.getComplianceMode());
     protected String pluginHostName;
     protected K8SIntegrationTestHelper helper = new K8SIntegrationTestHelper();
 
@@ -79,38 +82,37 @@ abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting {
 
     @AfterEach
     void afterwards() {
-
         helper.afterTest();
     }
 
-    protected void verifyPluginDatabasePreparation() {
-        Pod pod = helper.getClient().pods().inNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
-                .withLabel(KubeUtils.DB_JOB_LABEL_NAME, EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-server-db-job")
+    protected void verifyPluginDatabasePreparation(EntandoPlugin plugin) {
+        Pod pod = helper.getClient().pods().inNamespace(plugin.getMetadata().getNamespace())
+                .withLabels(dbPreparationJobLabels(plugin, KubeUtils.DEFAULT_SERVER_QUALIFIER))
                 .list().getItems().get(0);
-        assertThat(theInitContainerNamed(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-plugindb-schema-creation-job").on(pod)
+        assertThat(theInitContainerNamed(plugin.getMetadata().getName() + "-plugindb-schema-creation-job").on(pod)
                         .getImage(),
                 containsString("entando-k8s-dbjob"));
         pod.getStatus().getInitContainerStatuses()
                 .forEach(containerStatus -> assertThat(containerStatus.getState().getTerminated().getExitCode(), is(0)));
     }
 
-    protected void verifyPluginServerDeployment() {
+    protected void verifyPluginServerDeployment(EntandoPlugin plugin) {
         Deployment serverDeployment = helper.getClient().apps().deployments()
-                .inNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
-                .withName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-server-deployment").fromServer().get();
+                .inNamespace(plugin.getMetadata().getNamespace())
+                .withName(plugin.getMetadata().getName() + "-server-deployment").fromServer().get();
         assertThat(thePortNamed("server-port")
                 .on(theContainerNamed("server-container").on(serverDeployment))
                 .getContainerPort(), is(8081));
-        Service service = helper.getClient().services().inNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
-                .withName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-server-service").fromServer().get();
+        Service service = helper.getClient().services().inNamespace(plugin.getMetadata().getNamespace())
+                .withName(plugin.getMetadata().getName() + "-server-service").fromServer().get();
         assertThat(thePortNamed("server-port").on(service).getPort(), is(8081));
         assertTrue(serverDeployment.getStatus().getReadyReplicas() >= 1);
         await().atMost(10, TimeUnit.SECONDS)
                 .until(() -> HttpTestHelper.read(HttpTestHelper.getDefaultProtocol() + "://" + pluginHostName + "/avatarPlugin/index.html")
                         .contains("JHipster microservice homepage"));
         assertTrue(helper.entandoPlugins().getOperations()
-                .inNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
-                .withName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME)
+                .inNamespace(plugin.getMetadata().getNamespace())
+                .withName(plugin.getMetadata().getName())
                 .fromServer().get().getStatus()
                 .forServerQualifiedBy("server").isPresent());
         await().atMost(10, TimeUnit.SECONDS).until(() -> Arrays.asList(403, 401)

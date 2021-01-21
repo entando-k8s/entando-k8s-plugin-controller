@@ -49,6 +49,7 @@ import org.entando.kubernetes.controller.inprocesstest.k8sclientdouble.EntandoRe
 import org.entando.kubernetes.controller.inprocesstest.k8sclientdouble.SimpleK8SClientDouble;
 import org.entando.kubernetes.controller.k8sclient.SimpleK8SClient;
 import org.entando.kubernetes.controller.plugin.EntandoPluginController;
+import org.entando.kubernetes.controller.test.support.CommonLabels;
 import org.entando.kubernetes.controller.test.support.FluentTraversals;
 import org.entando.kubernetes.model.AbstractServerStatus;
 import org.entando.kubernetes.model.DbmsVendor;
@@ -68,7 +69,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 @Tags({@Tag("in-process"), @Tag("pre-deployment"), @Tag("component")})
-class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTraversals {
+//because SONAR doesn't recognize custome matchers and captors
+@SuppressWarnings({"java:S6068", "java:S6073"})
+class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTraversals, CommonLabels {
 
     static final String SERVER_PORT = "server-port";
     static final int PORT_8081 = 8081;
@@ -209,9 +212,8 @@ class DeployPluginOnExternalDbTest implements InProcessTestUtil, FluentTraversal
         entandoPluginController.onStartup(new StartupEvent());
         // Then a K8S deployment is created with a name that reflects the EntandoApp name and
         // the fact that it is a DB Deployment
-        LabeledArgumentCaptor<Pod> podCaptor = forResourceWithLabel(Pod.class, ENTANDO_PLUGIN_LABEL_NAME, MY_PLUGIN)
-                .andWithLabel(KubeUtils.DB_JOB_LABEL_NAME, MY_PLUGIN + "-server-db-job");
-
+        LabeledArgumentCaptor<Pod> podCaptor = forResourceWithLabels(Pod.class,
+                dbPreparationJobLabels(newEntandoPlugin, KubeUtils.DEFAULT_SERVER_QUALIFIER));
         verify(client.pods()).runToCompletion(podCaptor.capture());
         Pod thePod = podCaptor.getAllValues().get(0);
         //With a Pod Template that has labels linking it to the previously created K8S Service

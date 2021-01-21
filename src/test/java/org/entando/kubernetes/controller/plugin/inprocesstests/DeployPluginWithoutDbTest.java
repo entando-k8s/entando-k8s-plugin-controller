@@ -62,6 +62,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 @Tags({@Tag("in-process"), @Tag("pre-deployment"), @Tag("component")})
+//because SONAR doesn't recognize custome matchers and captors
+@SuppressWarnings({"java:S6068", "java:S6073"})
 class DeployPluginWithoutDbTest implements InProcessTestUtil, FluentTraversals {
 
     static final String SERVER_PORT = "server-port";

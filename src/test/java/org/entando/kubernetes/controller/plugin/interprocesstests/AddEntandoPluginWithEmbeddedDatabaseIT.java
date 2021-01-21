@@ -56,21 +56,21 @@ class AddEntandoPluginWithEmbeddedDatabaseIT extends AddEntandoPluginBaseIT {
         plugin.getMetadata().setName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME);
         SampleWriter.writeSample(plugin, format("plugin-with-embedded-%s-db", DBMS.toValue()));
         createAndWaitForPlugin(plugin, true);
-        verifyPluginDbDeployment();
-        verifyPluginDatabasePreparation();
-        verifyPluginServerDeployment();
+        verifyPluginDbDeployment(plugin);
+        verifyPluginDatabasePreparation(plugin);
+        verifyPluginServerDeployment(plugin);
     }
 
-    private void verifyPluginDbDeployment() {
+    private void verifyPluginDbDeployment(EntandoPlugin plugin) {
         Deployment deployment = helper.getClient().apps().deployments()
-                .inNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
-                .withName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-db-deployment").fromServer().get();
+                .inNamespace(plugin.getMetadata().getNamespace())
+                .withName(plugin.getMetadata().getName() + "-db-deployment").fromServer().get();
         assertThat(thePortNamed(DB_PORT)
                         .on(theContainerNamed("db-container").on(deployment))
                         .getContainerPort(),
                 is(DBMS_STRATEGY.getPort()));
-        Service dbService = helper.getClient().services().inNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
-                .withName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-db-service").fromServer().get();
+        Service dbService = helper.getClient().services().inNamespace(plugin.getMetadata().getNamespace())
+                .withName(plugin.getMetadata().getName() + "-db-service").fromServer().get();
         assertThat(thePortNamed(DB_PORT).on(dbService).getPort(), is(DBMS_STRATEGY.getPort()));
         await().atMost(20, TimeUnit.SECONDS).ignoreExceptions().until(() -> deployment.getStatus().getReadyReplicas() >= 1);
     }
