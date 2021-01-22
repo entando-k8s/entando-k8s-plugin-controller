@@ -17,6 +17,7 @@
 package org.entando.kubernetes.controller.plugin.inprocesstests;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.Is.is;
@@ -49,6 +50,7 @@ import io.quarkus.runtime.StartupEvent;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
+import org.entando.kubernetes.controller.EntandoOperatorComplianceMode;
 import org.entando.kubernetes.controller.EntandoOperatorConfig;
 import org.entando.kubernetes.controller.EntandoOperatorConfigProperty;
 import org.entando.kubernetes.controller.KeycloakClientConfig;
@@ -72,6 +74,7 @@ import org.entando.kubernetes.model.DbmsVendor;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Tags;
@@ -126,6 +129,11 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
     @Mock
     private SimpleKeycloakClient keycloakClient;
     private EntandoPluginController entandoPluginController;
+
+    @AfterEach
+    void resetProperties() {
+        System.clearProperty(EntandoOperatorConfigProperty.ENTANDO_K8S_OPERATOR_COMPLIANCE_MODE.getJvmSystemProperty());
+    }
 
     @BeforeEach
     void putApp() {
@@ -226,6 +234,45 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
     }
 
     @Test
+    void testDeploymentInRedHatMode() {
+        //Given I have run in a RedHat certified environment
+        System.setProperty(EntandoOperatorConfigProperty.ENTANDO_K8S_OPERATOR_COMPLIANCE_MODE.getJvmSystemProperty(),
+                EntandoOperatorComplianceMode.REDHAT.getName());
+        //And I have an Entando Plugin in LENIENT mode
+        EntandoPlugin newEntandoPlugin = new EntandoPluginBuilder(this.entandoPlugin)
+                .editSpec()
+                .withConnectionConfigNames(Collections.emptyList())
+                .withSecurityLevel(PluginSecurityLevel.LENIENT)
+                .endSpec()
+                .build();
+        client.entandoResources().putEntandoPlugin(newEntandoPlugin);
+        //And K8S is receiving Deployment requests
+        DeploymentStatus dbDeploymentStatus = new DeploymentStatus();
+        lenient().when(client.deployments().loadDeployment(eq(newEntandoPlugin), eq(MY_PLUGIN_DB_DEPLOYMENT)))
+                .then(respondWithDeploymentStatus(dbDeploymentStatus));
+        DeploymentStatus serverDeploymentStatus = new DeploymentStatus();
+        lenient().when(client.deployments().loadDeployment(eq(newEntandoPlugin), eq(MY_PLUGIN + "-server-deployment")))
+                .then(respondWithDeploymentStatus(serverDeploymentStatus));
+
+        when(keycloakClient.prepareClientAndReturnSecret(any(KeycloakClientConfig.class))).thenReturn(KEYCLOAK_SECRET);
+
+        //When the DeployCommand processes the addition request
+        entandoPluginController.onStartup(new StartupEvent());
+
+        //Then K8S was instructed to create a Deployment for the Plugin Server
+        NamedArgumentCaptor<Deployment> serverDeploymentCaptor = forResourceNamed(Deployment.class,
+                MY_PLUGIN + "-server-deployment");
+        verify(client.deployments()).createOrPatchDeployment(eq(newEntandoPlugin), serverDeploymentCaptor.capture());
+        final Deployment serverDeployment = serverDeploymentCaptor.getValue();
+        //With a single container
+        assertThat(serverDeployment.getSpec().getTemplate().getSpec().getContainers().size(), is(1));
+        //which is not the Plugin Sidecar container
+        assertThat(thePrimaryContainerOn(serverDeployment).getImage(), not(containsString("entando/entando-plugin-sidecar")));
+        assertThat(thePrimaryContainerOn(serverDeployment).getName(), is(not("sidecar-container")));
+
+    }
+
+    @Test
     void testService() {
         //Given I have an Entando Plugin with a MySQL Database
         EntandoPlugin newEntandoPlugin = this.entandoPlugin;
@@ -320,6 +367,8 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
         assertThat(theLabel(ENTANDO_PLUGIN_LABEL_NAME).on(serverDeployment.getSpec().getTemplate()), is(MY_PLUGIN));
         verifyDbContainer(theContainerNamed("db-container").on(dbDeployment));
         verifyPluginServerContainer(theContainerNamed("server-container").on(serverDeployment));
+        assertThat(theContainerNamed("sidecar-container").on(serverDeployment).getImage(),
+                containsString("entando/entando-plugin-sidecar"));
         // And mapping a persistent volume with a name that reflects the EntandoPlugin
         // and the deployment the Volume is used for
         //That are linked to the previously created PersistentVolumeClaims

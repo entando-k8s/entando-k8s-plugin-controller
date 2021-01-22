@@ -22,6 +22,8 @@ import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.Ingress;
 import java.util.ArrayList;
 import java.util.List;
+import org.entando.kubernetes.controller.EntandoOperatorComplianceMode;
+import org.entando.kubernetes.controller.EntandoOperatorConfig;
 import org.entando.kubernetes.controller.KeycloakConnectionConfig;
 import org.entando.kubernetes.controller.KubeUtils;
 import org.entando.kubernetes.controller.database.DatabaseServiceResult;
@@ -46,7 +48,8 @@ public class EntandoPluginServerDeployable implements IngressingDeployable<Entan
         //TODO make decision on which other containers to include based on the EntandoPlugin.spec
         this.containers = new ArrayList<>();
         this.containers.add(new EntandoPluginDeployableContainer(entandoPlugin, keycloakConnectionConfig));
-        if (entandoPlugin.getSpec().getSecurityLevel().map(PluginSecurityLevel.LENIENT::equals).orElse(true)) {
+        if (EntandoOperatorConfig.getComplianceMode() != EntandoOperatorComplianceMode.REDHAT
+                && entandoPlugin.getSpec().getSecurityLevel().orElse(PluginSecurityLevel.STRICT) == PluginSecurityLevel.LENIENT) {
             this.containers.add(new EntandoPluginSidecarDeployableContainer(entandoPlugin, keycloakConnectionConfig));
         }
     }
