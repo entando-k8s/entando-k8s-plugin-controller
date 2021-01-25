@@ -47,7 +47,7 @@ public class EntandoPluginServerDeployable implements IngressingDeployable<Entan
         this.entandoPlugin = entandoPlugin;
         //TODO make decision on which other containers to include based on the EntandoPlugin.spec
         this.containers = new ArrayList<>();
-        this.containers.add(new EntandoPluginDeployableContainer(entandoPlugin, keycloakConnectionConfig));
+        this.containers.add(new EntandoPluginDeployableContainer(entandoPlugin, keycloakConnectionConfig, databaseServiceResult));
         if (EntandoOperatorConfig.getComplianceMode() != EntandoOperatorComplianceMode.REDHAT
                 && entandoPlugin.getSpec().getSecurityLevel().orElse(PluginSecurityLevel.STRICT) == PluginSecurityLevel.LENIENT) {
             this.containers.add(new EntandoPluginSidecarDeployableContainer(entandoPlugin, keycloakConnectionConfig));
@@ -94,8 +94,4 @@ public class EntandoPluginServerDeployable implements IngressingDeployable<Entan
         return new EntandoPluginDeploymentResult(pod, service, ingress);
     }
 
-    @Override
-    public DatabaseServiceResult getDatabaseServiceResult() {
-        return databaseServiceResult;
-    }
 }
