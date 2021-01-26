@@ -26,9 +26,6 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
-import org.entando.kubernetes.controller.EntandoOperatorConfig;
-import org.entando.kubernetes.controller.KubeUtils;
-import org.entando.kubernetes.controller.database.DbmsDockerVendorStrategy;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoOperatorTestConfig;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoOperatorTestConfig.TestTarget;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
@@ -37,6 +34,10 @@ import org.entando.kubernetes.controller.integrationtest.support.HttpTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.K8SIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.KeycloakIntegrationTestHelper;
 import org.entando.kubernetes.controller.plugin.EntandoPluginController;
+import org.entando.kubernetes.controller.spi.common.DbmsDockerVendorStrategy;
+import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
+import org.entando.kubernetes.controller.spi.common.NameUtils;
+import org.entando.kubernetes.controller.support.common.EntandoOperatorConfig;
 import org.entando.kubernetes.controller.test.support.CommonLabels;
 import org.entando.kubernetes.model.DbmsVendor;
 import org.entando.kubernetes.model.externaldatabase.EntandoDatabaseService;
@@ -48,7 +49,7 @@ abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting, Commo
 
     protected static final DbmsVendor DBMS = DbmsVendor.POSTGRESQL;
     protected static final DbmsDockerVendorStrategy DBMS_STRATEGY = DbmsDockerVendorStrategy
-            .forVendor(DBMS, EntandoOperatorConfig.getComplianceMode());
+            .forVendor(DBMS, EntandoOperatorSpiConfig.getComplianceMode());
     protected String pluginHostName;
     protected K8SIntegrationTestHelper helper = new K8SIntegrationTestHelper();
 
@@ -76,7 +77,7 @@ abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting, Commo
     void createAndWaitForPlugin(EntandoPlugin plugin, boolean isDbEmbedded) {
         helper.clusterInfrastructure().ensureInfrastructureConnectionConfig();
         String name = plugin.getMetadata().getName();
-        helper.keycloak().deleteKeycloakClients(plugin, name + "-" + KubeUtils.DEFAULT_SERVER_QUALIFIER, name + "-sidecar");
+        helper.keycloak().deleteKeycloakClients(plugin, name + "-" + NameUtils.DEFAULT_SERVER_QUALIFIER, name + "-sidecar");
         helper.entandoPlugins().createAndWaitForPlugin(plugin, isDbEmbedded);
     }
 
@@ -87,7 +88,7 @@ abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting, Commo
 
     protected void verifyPluginDatabasePreparation(EntandoPlugin plugin) {
         Pod pod = helper.getClient().pods().inNamespace(plugin.getMetadata().getNamespace())
-                .withLabels(dbPreparationJobLabels(plugin, KubeUtils.DEFAULT_SERVER_QUALIFIER))
+                .withLabels(dbPreparationJobLabels(plugin, NameUtils.DEFAULT_SERVER_QUALIFIER))
                 .list().getItems().get(0);
         assertThat(theInitContainerNamed(plugin.getMetadata().getName() + "-plugindb-schema-creation-job").on(pod)
                         .getImage(),

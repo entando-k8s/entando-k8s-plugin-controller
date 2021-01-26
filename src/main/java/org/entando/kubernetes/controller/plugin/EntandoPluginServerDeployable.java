@@ -22,14 +22,14 @@ import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.Ingress;
 import java.util.ArrayList;
 import java.util.List;
-import org.entando.kubernetes.controller.EntandoOperatorComplianceMode;
-import org.entando.kubernetes.controller.EntandoOperatorConfig;
-import org.entando.kubernetes.controller.KeycloakConnectionConfig;
-import org.entando.kubernetes.controller.KubeUtils;
-import org.entando.kubernetes.controller.database.DatabaseServiceResult;
-import org.entando.kubernetes.controller.spi.DbAwareDeployable;
-import org.entando.kubernetes.controller.spi.DeployableContainer;
-import org.entando.kubernetes.controller.spi.IngressingDeployable;
+import org.entando.kubernetes.controller.spi.common.EntandoOperatorComplianceMode;
+import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
+import org.entando.kubernetes.controller.spi.common.NameUtils;
+import org.entando.kubernetes.controller.spi.container.DeployableContainer;
+import org.entando.kubernetes.controller.spi.container.KeycloakConnectionConfig;
+import org.entando.kubernetes.controller.spi.deployable.DbAwareDeployable;
+import org.entando.kubernetes.controller.spi.deployable.IngressingDeployable;
+import org.entando.kubernetes.controller.spi.result.DatabaseServiceResult;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginSpec;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
@@ -48,7 +48,7 @@ public class EntandoPluginServerDeployable implements IngressingDeployable<Entan
         //TODO make decision on which other containers to include based on the EntandoPlugin.spec
         this.containers = new ArrayList<>();
         this.containers.add(new EntandoPluginDeployableContainer(entandoPlugin, keycloakConnectionConfig, databaseServiceResult));
-        if (EntandoOperatorConfig.getComplianceMode() != EntandoOperatorComplianceMode.REDHAT
+        if (EntandoOperatorSpiConfig.getComplianceMode() != EntandoOperatorComplianceMode.REDHAT
                 && entandoPlugin.getSpec().getSecurityLevel().orElse(PluginSecurityLevel.STRICT) == PluginSecurityLevel.LENIENT) {
             this.containers.add(new EntandoPluginSidecarDeployableContainer(entandoPlugin, keycloakConnectionConfig));
         }
@@ -71,7 +71,7 @@ public class EntandoPluginServerDeployable implements IngressingDeployable<Entan
 
     @Override
     public String getIngressName() {
-        return KubeUtils.standardIngressName(entandoPlugin);
+        return NameUtils.standardIngressName(entandoPlugin);
     }
 
     @Override
@@ -81,7 +81,7 @@ public class EntandoPluginServerDeployable implements IngressingDeployable<Entan
 
     @Override
     public String getNameQualifier() {
-        return KubeUtils.DEFAULT_SERVER_QUALIFIER;
+        return NameUtils.DEFAULT_SERVER_QUALIFIER;
     }
 
     @Override

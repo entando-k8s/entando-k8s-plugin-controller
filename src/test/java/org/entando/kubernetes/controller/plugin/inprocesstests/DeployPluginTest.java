@@ -50,23 +50,25 @@ import io.quarkus.runtime.StartupEvent;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
-import org.entando.kubernetes.controller.EntandoOperatorComplianceMode;
-import org.entando.kubernetes.controller.EntandoOperatorConfig;
-import org.entando.kubernetes.controller.EntandoOperatorConfigProperty;
-import org.entando.kubernetes.controller.KeycloakClientConfig;
-import org.entando.kubernetes.controller.KubeUtils;
-import org.entando.kubernetes.controller.SecurityMode;
-import org.entando.kubernetes.controller.SimpleKeycloakClient;
-import org.entando.kubernetes.controller.common.KeycloakName;
 import org.entando.kubernetes.controller.inprocesstest.InProcessTestUtil;
 import org.entando.kubernetes.controller.inprocesstest.argumentcaptors.KeycloakClientConfigArgumentCaptor;
 import org.entando.kubernetes.controller.inprocesstest.argumentcaptors.LabeledArgumentCaptor;
 import org.entando.kubernetes.controller.inprocesstest.argumentcaptors.NamedArgumentCaptor;
 import org.entando.kubernetes.controller.inprocesstest.k8sclientdouble.EntandoResourceClientDouble;
 import org.entando.kubernetes.controller.inprocesstest.k8sclientdouble.SimpleK8SClientDouble;
-import org.entando.kubernetes.controller.k8sclient.SimpleK8SClient;
 import org.entando.kubernetes.controller.plugin.EntandoPluginController;
-import org.entando.kubernetes.controller.spi.DeployableContainer;
+import org.entando.kubernetes.controller.spi.common.EntandoOperatorComplianceMode;
+import org.entando.kubernetes.controller.spi.common.NameUtils;
+import org.entando.kubernetes.controller.spi.common.SecretUtils;
+import org.entando.kubernetes.controller.spi.container.DeployableContainer;
+import org.entando.kubernetes.controller.spi.container.KeycloakClientConfig;
+import org.entando.kubernetes.controller.spi.container.KeycloakName;
+import org.entando.kubernetes.controller.support.client.SimpleK8SClient;
+import org.entando.kubernetes.controller.support.client.SimpleKeycloakClient;
+import org.entando.kubernetes.controller.support.common.EntandoOperatorConfig;
+import org.entando.kubernetes.controller.support.common.EntandoOperatorConfigProperty;
+import org.entando.kubernetes.controller.support.common.KubeUtils;
+import org.entando.kubernetes.controller.support.common.SecurityMode;
 import org.entando.kubernetes.controller.test.support.CommonLabels;
 import org.entando.kubernetes.controller.test.support.FluentTraversals;
 import org.entando.kubernetes.controller.test.support.VariableReferenceAssertions;
@@ -161,16 +163,16 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
         NamedArgumentCaptor<Secret> adminSecretCaptor = forResourceNamed(Secret.class, MY_PLUGIN_DB_ADMIN_SECRET);
         verify(client.secrets()).createSecretIfAbsent(eq(newEntandoPlugin), adminSecretCaptor.capture());
         Secret theDbAdminSecret = adminSecretCaptor.getValue();
-        assertThat(theKey(KubeUtils.USERNAME_KEY).on(theDbAdminSecret), is("root"));
-        assertThat(theKey(KubeUtils.PASSSWORD_KEY).on(theDbAdminSecret), is(not(emptyOrNullString())));
+        assertThat(theKey(SecretUtils.USERNAME_KEY).on(theDbAdminSecret), is("root"));
+        assertThat(theKey(SecretUtils.PASSSWORD_KEY).on(theDbAdminSecret), is(not(emptyOrNullString())));
         assertThat(theLabel(ENTANDO_PLUGIN_LABEL_NAME).on(theDbAdminSecret), is(MY_PLUGIN));
 
         //And a K8S Secret was created with a name that reflects the EntandoPlugin and the fact that it is the plugin's secret
         NamedArgumentCaptor<Secret> pluginSecretCaptor = forResourceNamed(Secret.class, MY_PLUGIN_PLUGINDB_SECRET);
         verify(client.secrets()).createSecretIfAbsent(eq(newEntandoPlugin), pluginSecretCaptor.capture());
         Secret thePluginDbSecret = pluginSecretCaptor.getValue();
-        assertThat(theKey(KubeUtils.USERNAME_KEY).on(thePluginDbSecret), is("my_plugin_plugindb"));
-        assertThat(theKey(KubeUtils.PASSSWORD_KEY).on(thePluginDbSecret), is(not(emptyOrNullString())));
+        assertThat(theKey(SecretUtils.USERNAME_KEY).on(thePluginDbSecret), is("my_plugin_plugindb"));
+        assertThat(theKey(SecretUtils.PASSSWORD_KEY).on(thePluginDbSecret), is(not(emptyOrNullString())));
         assertThat(theLabel(ENTANDO_PLUGIN_LABEL_NAME).on(thePluginDbSecret), is(MY_PLUGIN));
 
         //Then a K8S Secret was created with a name that reflects the EntandoPlugin and the fact that it is a Keycloak secret
@@ -441,9 +443,9 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
                 theVariableReferenceNamed(SPRING_DATASOURCE_USERNAME).on(thePluginContainer).getSecretKeyRef().getName(),
                 is(MY_PLUGIN_PLUGINDB_SECRET));
         assertThat(theVariableReferenceNamed(SPRING_DATASOURCE_USERNAME).on(thePluginContainer).getSecretKeyRef().getKey(),
-                is(KubeUtils.USERNAME_KEY));
+                is(SecretUtils.USERNAME_KEY));
         assertThat(theVariableReferenceNamed(SPRING_DATASOURCE_PASSWORD).on(thePluginContainer).getSecretKeyRef().getKey(),
-                is(KubeUtils.PASSSWORD_KEY));
+                is(SecretUtils.PASSSWORD_KEY));
         assertThat(theVariableNamed(PARAMETER_NAME).on(thePluginContainer), is(PARAMETER_VALUE));
         assertThat(theVariableNamed("SPRING_DATASOURCE_URL").on(thePluginContainer),
                 is("jdbc:mysql://" + MY_PLUGIN_DB_SERVICE + "." + MY_PLUGIN_NAMESPACE + ".svc.cluster.local:3306/my_plugin_plugindb"));
@@ -482,7 +484,7 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
         assertThat(theVariableReferenceNamed("MYSQL_ROOT_PASSWORD").on(theDbContainer).getSecretKeyRef().getName(),
                 is(MY_PLUGIN_DB_ADMIN_SECRET));
         assertThat(theVariableReferenceNamed("MYSQL_ROOT_PASSWORD").on(theDbContainer).getSecretKeyRef().getKey(),
-                is(KubeUtils.PASSSWORD_KEY));
+                is(SecretUtils.PASSSWORD_KEY));
     }
 
     @Test
@@ -494,7 +496,7 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
 
         //Then a Pod  is created that has labels linking it to the previously created EntandoApp
         LabeledArgumentCaptor<Pod> podCaptor = forResourceWithLabels(Pod.class,
-                dbPreparationJobLabels(newEntandoPlugin, KubeUtils.DEFAULT_SERVER_QUALIFIER));
+                dbPreparationJobLabels(newEntandoPlugin, NameUtils.DEFAULT_SERVER_QUALIFIER));
         verify(client.pods()).runToCompletion(podCaptor.capture());
         Pod pod = podCaptor.getValue();
         verifySchemaCreationFor(MY_PLUGIN_PLUGINDB_SECRET, pod, MY_PLUGIN + "-plugindb-schema-creation-job");

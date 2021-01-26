@@ -25,12 +25,13 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
-import org.entando.kubernetes.controller.EntandoOperatorComplianceMode;
-import org.entando.kubernetes.controller.EntandoOperatorConfig;
-import org.entando.kubernetes.controller.EntandoOperatorConfigProperty;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.KeycloakIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.SampleWriter;
+import org.entando.kubernetes.controller.spi.common.EntandoOperatorComplianceMode;
+import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
+import org.entando.kubernetes.controller.support.common.EntandoOperatorConfig;
+import org.entando.kubernetes.controller.support.common.EntandoOperatorConfigProperty;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
@@ -87,7 +88,7 @@ class AddEntandoPluginWithContainerizedDatabaseIT extends AddEntandoPluginBaseIT
                         .on(theContainerNamed("db-container").on(deployment))
                         .getContainerPort(),
                 is(DBMS_STRATEGY.getPort()));
-        if (EntandoOperatorConfig.getComplianceMode() == EntandoOperatorComplianceMode.COMMUNITY) {
+        if (EntandoOperatorSpiConfig.getComplianceMode() == EntandoOperatorComplianceMode.COMMUNITY) {
             assertThat(thePrimaryContainerOn(deployment).getImage(), containsString("centos/postgresql-12-centos7"));
         } else {
             assertThat(thePrimaryContainerOn(deployment).getImage(), containsString("rhel8/postgresql-12"));

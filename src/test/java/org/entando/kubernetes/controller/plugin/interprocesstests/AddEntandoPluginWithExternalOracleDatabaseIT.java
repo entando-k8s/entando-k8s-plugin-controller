@@ -16,7 +16,8 @@
 
 package org.entando.kubernetes.controller.plugin.interprocesstests;
 
-import static org.entando.kubernetes.controller.KubeUtils.snakeCaseOf;
+
+import static org.entando.kubernetes.controller.spi.common.NameUtils.snakeCaseOf;
 
 import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.KeycloakIntegrationTestHelper;
