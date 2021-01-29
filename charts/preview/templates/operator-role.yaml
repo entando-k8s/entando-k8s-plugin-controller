@@ -28,6 +28,7 @@ rules:
       - persistentvolumeclaims
       - configmaps
       - serviceaccounts
+      - events
     verbs:
       - "*"
   - apiGroups:
