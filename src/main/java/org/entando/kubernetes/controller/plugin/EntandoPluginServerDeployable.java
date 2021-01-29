@@ -33,7 +33,8 @@ import org.entando.kubernetes.controller.support.spibase.IngressingDeployableBas
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 
-public class EntandoPluginServerDeployable implements IngressingDeployableBase<EntandoPluginDeploymentResult>, DbAwareDeployable {
+public class EntandoPluginServerDeployable
+        implements IngressingDeployableBase<EntandoPluginDeploymentResult>, DbAwareDeployable<EntandoPluginDeploymentResult> {
 
     private final EntandoPlugin entandoPlugin;
     private final List<DeployableContainer> containers;

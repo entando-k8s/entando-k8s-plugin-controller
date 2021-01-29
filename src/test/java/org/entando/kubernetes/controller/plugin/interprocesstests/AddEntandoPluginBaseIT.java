@@ -37,15 +37,20 @@ import org.entando.kubernetes.controller.plugin.EntandoPluginController;
 import org.entando.kubernetes.controller.spi.common.DbmsDockerVendorStrategy;
 import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
 import org.entando.kubernetes.controller.spi.common.NameUtils;
-import org.entando.kubernetes.controller.support.common.EntandoOperatorConfig;
+import org.entando.kubernetes.controller.support.client.InfrastructureConfig;
 import org.entando.kubernetes.controller.test.support.CommonLabels;
 import org.entando.kubernetes.model.DbmsVendor;
+import org.entando.kubernetes.model.ResourceReference;
 import org.entando.kubernetes.model.externaldatabase.EntandoDatabaseService;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
 abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting, CommonLabels {
+
+    public static final String CLUSTER_INFRASTRUCTURE_NAMESPACE = EntandoOperatorTestConfig
+            .calculateNameSpace("entando-infra-namespace");
+    public static final String CLUSTER_INFRASTRUCTURE_NAME = EntandoOperatorTestConfig.calculateName("eti");
 
     protected static final DbmsVendor DBMS = DbmsVendor.POSTGRESQL;
     protected static final DbmsDockerVendorStrategy DBMS_STRATEGY = DbmsDockerVendorStrategy
@@ -75,10 +80,34 @@ abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting, Commo
     }
 
     void createAndWaitForPlugin(EntandoPlugin plugin, boolean isContainerizedDb) {
-        helper.clusterInfrastructure().ensureInfrastructureConnectionConfig();
+        ensureInfrastructureConnectionConfig();
         String name = plugin.getMetadata().getName();
         helper.keycloak().deleteKeycloakClients(plugin, name + "-" + NameUtils.DEFAULT_SERVER_QUALIFIER, name + "-sidecar");
         helper.entandoPlugins().createAndWaitForPlugin(plugin, isContainerizedDb);
+    }
+
+    //TODO get rid of this once we deploy K8S with the operator
+    public void ensureInfrastructureConnectionConfig() {
+        helper.entandoPlugins().loadDefaultOperatorConfigMap()
+                .addToData(InfrastructureConfig.DEFAULT_CLUSTER_INFRASTRUCTURE_NAMESPACE_KEY, CLUSTER_INFRASTRUCTURE_NAMESPACE)
+                .addToData(InfrastructureConfig.DEFAULT_CLUSTER_INFRASTRUCTURE_NAME_KEY, CLUSTER_INFRASTRUCTURE_NAME)
+                .done();
+        ResourceReference infrastructureToUse = new ResourceReference(CLUSTER_INFRASTRUCTURE_NAMESPACE, CLUSTER_INFRASTRUCTURE_NAME);
+        delete(helper.getClient().configMaps())
+                .named(InfrastructureConfig.connectionConfigMapNameFor(infrastructureToUse))
+                .fromNamespace(CLUSTER_INFRASTRUCTURE_NAMESPACE)
+                .waitingAtMost(20, SECONDS);
+        String hostName = "http://" + CLUSTER_INFRASTRUCTURE_NAME + "." + helper.getDomainSuffix();
+        helper.getClient().configMaps()
+                .inNamespace(CLUSTER_INFRASTRUCTURE_NAMESPACE)
+                .createNew()
+                .withNewMetadata()
+                .withName(InfrastructureConfig.connectionConfigMapNameFor(infrastructureToUse))
+                .endMetadata()
+                .addToData(InfrastructureConfig.ENTANDO_K8S_SERVICE_CLIENT_ID_KEY, CLUSTER_INFRASTRUCTURE_NAME + "-k8s-svc")
+                .addToData(InfrastructureConfig.ENTANDO_K8S_SERVICE_INTERNAL_URL_KEY, hostName + "/k8s")
+                .addToData(InfrastructureConfig.ENTANDO_K8S_SERVICE_EXTERNAL_URL_KEY, hostName + "/k8s")
+                .done();
     }
 
     @AfterEach
