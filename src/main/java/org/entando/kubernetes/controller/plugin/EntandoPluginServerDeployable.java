@@ -28,14 +28,12 @@ import org.entando.kubernetes.controller.spi.common.NameUtils;
 import org.entando.kubernetes.controller.spi.container.DeployableContainer;
 import org.entando.kubernetes.controller.spi.container.KeycloakConnectionConfig;
 import org.entando.kubernetes.controller.spi.deployable.DbAwareDeployable;
-import org.entando.kubernetes.controller.spi.deployable.IngressingDeployable;
 import org.entando.kubernetes.controller.spi.result.DatabaseServiceResult;
+import org.entando.kubernetes.controller.support.spibase.IngressingDeployableBase;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
-import org.entando.kubernetes.model.plugin.EntandoPluginSpec;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 
-public class EntandoPluginServerDeployable implements IngressingDeployable<EntandoPluginDeploymentResult, EntandoPluginSpec>,
-        DbAwareDeployable {
+public class EntandoPluginServerDeployable implements IngressingDeployableBase<EntandoPluginDeploymentResult>, DbAwareDeployable {
 
     private final EntandoPlugin entandoPlugin;
     private final List<DeployableContainer> containers;
@@ -58,7 +56,7 @@ public class EntandoPluginServerDeployable implements IngressingDeployable<Entan
     }
 
     @Override
-    public String getServiceAccountName() {
+    public String getDefaultServiceAccountName() {
         return "entando-plugin";
     }
 
@@ -90,6 +88,11 @@ public class EntandoPluginServerDeployable implements IngressingDeployable<Entan
     @Override
     public EntandoPluginDeploymentResult createResult(Deployment deployment, Service service, Ingress ingress, Pod pod) {
         return new EntandoPluginDeploymentResult(pod, service, ingress);
+    }
+
+    @Override
+    public String getServiceAccountToUse() {
+        return entandoPlugin.getSpec().getServiceAccountToUse().orElse(getDefaultServiceAccountName());
     }
 
 }

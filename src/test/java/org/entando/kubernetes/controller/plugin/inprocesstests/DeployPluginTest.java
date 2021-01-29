@@ -139,7 +139,7 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
 
     @BeforeEach
     void putApp() {
-        client.entandoResources().putEntandoPlugin(entandoPlugin);
+        client.entandoResources().createOrPatchEntandoResource(entandoPlugin);
         emulateClusterInfrastuctureDeployment(client);
         emulateKeycloakDeployment(client);
         entandoPluginController = new EntandoPluginController(client, keycloakClient);
@@ -247,7 +247,7 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
                 .withSecurityLevel(PluginSecurityLevel.LENIENT)
                 .endSpec()
                 .build();
-        client.entandoResources().putEntandoPlugin(newEntandoPlugin);
+        client.entandoResources().createOrPatchEntandoResource(newEntandoPlugin);
         //And K8S is receiving Deployment requests
         DeploymentStatus dbDeploymentStatus = new DeploymentStatus();
         lenient().when(client.deployments().loadDeployment(eq(newEntandoPlugin), eq(MY_PLUGIN_DB_DEPLOYMENT)))

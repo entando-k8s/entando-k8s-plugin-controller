@@ -34,13 +34,15 @@ import org.entando.kubernetes.controller.spi.container.PersistentVolumeAware;
 import org.entando.kubernetes.controller.spi.container.SpringBootDeployableContainer;
 import org.entando.kubernetes.controller.spi.result.DatabaseServiceResult;
 import org.entando.kubernetes.controller.support.common.KubeUtils;
-import org.entando.kubernetes.model.EntandoIngressingDeploymentSpec;
+import org.entando.kubernetes.controller.support.spibase.KeycloakAwareContainerBase;
+import org.entando.kubernetes.model.DbmsVendor;
+import org.entando.kubernetes.model.EntandoResourceRequirements;
 import org.entando.kubernetes.model.KeycloakAwareSpec;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 
 public class EntandoPluginDeployableContainer implements PersistentVolumeAware, SpringBootDeployableContainer, ParameterizableContainer,
-        ConfigurableResourceContainer {
+        ConfigurableResourceContainer, KeycloakAwareContainerBase {
 
     public static final String PLUGINDB = "plugindb";
     private final EntandoPlugin entandoPlugin;
@@ -71,6 +73,11 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAware, 
     @Override
     public int getMemoryLimitMebibytes() {
         return 1024;
+    }
+
+    @Override
+    public Optional<DbmsVendor> getDbms() {
+        return Optional.empty();
     }
 
     @Override
@@ -117,18 +124,13 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAware, 
 
     @Override
     public KeycloakClientConfig getKeycloakClientConfig() {
-        return new KeycloakClientConfig(determineRealm(),
+        return new KeycloakClientConfig(getKeycloakRealmToUse(),
                 entandoPlugin.getMetadata().getName() + "-" + getNameQualifier(),
                 entandoPlugin.getMetadata().getName(), entandoPlugin.getSpec().getRoles(),
                 entandoPlugin.getSpec().getPermissions())
                 .withRole(KubeUtils.ENTANDO_APP_ROLE)
                 .withPermission(EntandoPluginSidecarDeployableContainer.keycloakClientIdOf(entandoPlugin),
                         EntandoPluginSidecarDeployableContainer.REQUIRED_ROLE);
-    }
-
-    @Override
-    public KeycloakAwareSpec getKeycloakAwareSpec() {
-        return entandoPlugin.getSpec();
     }
 
     @Override
@@ -142,12 +144,22 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAware, 
     }
 
     @Override
-    public EntandoIngressingDeploymentSpec getCustomResourceSpec() {
-        return getKeycloakAwareSpec();
+    public List<DatabaseSchemaConnectionInfo> getSchemaConnectionInfo() {
+        return this.databaseSchemaConnectionInfo;
     }
 
     @Override
-    public List<DatabaseSchemaConnectionInfo> getSchemaConnectionInfo() {
-        return this.databaseSchemaConnectionInfo;
+    public Optional<EntandoResourceRequirements> getResourceRequirementsOverride() {
+        return getKeycloakAwareSpec().getResourceRequirements();
+    }
+
+    @Override
+    public List<EnvVar> getEnvironmentVariableOverrides() {
+        return getKeycloakAwareSpec().getEnvironmentVariables();
+    }
+
+    @Override
+    public KeycloakAwareSpec getKeycloakAwareSpec() {
+        return entandoPlugin.getSpec();
     }
 }

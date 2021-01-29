@@ -78,7 +78,7 @@ class DeployPluginWithoutSidecarTest implements InProcessTestUtil, FluentTravers
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_ACTION, Action.ADDED.name());
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_NAME, entandoPlugin.getMetadata().getName());
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_NAMESPACE, entandoPlugin.getMetadata().getNamespace());
-        client.entandoResources().putEntandoPlugin(entandoPlugin);
+        client.entandoResources().createOrPatchEntandoResource(entandoPlugin);
         this.entandoPluginController = new EntandoPluginController(client, keycloakClient);
     }
 

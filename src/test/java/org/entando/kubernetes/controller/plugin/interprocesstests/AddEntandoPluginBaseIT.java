@@ -74,11 +74,11 @@ abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting, Commo
         pluginHostName = EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "." + this.helper.getDomainSuffix();
     }
 
-    void createAndWaitForPlugin(EntandoPlugin plugin, boolean isDbEmbedded) {
+    void createAndWaitForPlugin(EntandoPlugin plugin, boolean isContainerizedDb) {
         helper.clusterInfrastructure().ensureInfrastructureConnectionConfig();
         String name = plugin.getMetadata().getName();
         helper.keycloak().deleteKeycloakClients(plugin, name + "-" + NameUtils.DEFAULT_SERVER_QUALIFIER, name + "-sidecar");
-        helper.entandoPlugins().createAndWaitForPlugin(plugin, isDbEmbedded);
+        helper.entandoPlugins().createAndWaitForPlugin(plugin, isContainerizedDb);
     }
 
     @AfterEach

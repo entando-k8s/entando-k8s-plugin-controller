@@ -22,17 +22,17 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.entando.kubernetes.controller.spi.container.DeployableContainer;
-import org.entando.kubernetes.controller.spi.container.KeycloakAware;
 import org.entando.kubernetes.controller.spi.container.KeycloakClientConfig;
 import org.entando.kubernetes.controller.spi.container.KeycloakConnectionConfig;
 import org.entando.kubernetes.controller.spi.container.KubernetesPermission;
 import org.entando.kubernetes.controller.spi.container.ParameterizableContainer;
 import org.entando.kubernetes.controller.spi.container.TlsAware;
-import org.entando.kubernetes.model.EntandoIngressingDeploymentSpec;
+import org.entando.kubernetes.controller.support.spibase.KeycloakAwareContainerBase;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginSpec;
 
-public class EntandoPluginSidecarDeployableContainer implements DeployableContainer, KeycloakAware, TlsAware, ParameterizableContainer {
+public class EntandoPluginSidecarDeployableContainer implements DeployableContainer, KeycloakAwareContainerBase, TlsAware,
+        ParameterizableContainer {
 
     public static final String REQUIRED_ROLE = "connection-config";
     private static final String ENTANDO_PLUGIN_SIDECAR_IMAGE = "entando/entando-plugin-sidecar";
@@ -88,7 +88,7 @@ public class EntandoPluginSidecarDeployableContainer implements DeployableContai
     @Override
     public KeycloakClientConfig getKeycloakClientConfig() {
         String clientId = keycloakClientIdOf(this.entandoPlugin);
-        return new KeycloakClientConfig(determineRealm(), clientId, clientId).withRole(REQUIRED_ROLE);
+        return new KeycloakClientConfig(getKeycloakRealmToUse(), clientId, clientId).withRole(REQUIRED_ROLE);
     }
 
     @Override
@@ -108,12 +108,12 @@ public class EntandoPluginSidecarDeployableContainer implements DeployableContai
     }
 
     @Override
-    public EntandoIngressingDeploymentSpec getCustomResourceSpec() {
-        return getKeycloakAwareSpec();
+    public EntandoPluginSpec getKeycloakAwareSpec() {
+        return entandoPlugin.getSpec();
     }
 
     @Override
-    public EntandoPluginSpec getKeycloakAwareSpec() {
-        return entandoPlugin.getSpec();
+    public List<EnvVar> getEnvironmentVariableOverrides() {
+        return getKeycloakAwareSpec().getEnvironmentVariables();
     }
 }

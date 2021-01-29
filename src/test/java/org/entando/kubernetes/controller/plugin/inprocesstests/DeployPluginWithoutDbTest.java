@@ -77,7 +77,7 @@ class DeployPluginWithoutDbTest implements InProcessTestUtil, FluentTraversals {
     @Mock
     private SimpleKeycloakClient keycloakClient;
     private EntandoPluginController entandoPluginController;
-    private EntandoPlugin entandoPlugin = new EntandoPluginBuilder(newTestEntandoPlugin()).editSpec().withDbms(DbmsVendor.NONE).endSpec()
+    private final EntandoPlugin entandoPlugin = new EntandoPluginBuilder(newTestEntandoPlugin()).editSpec().withDbms(DbmsVendor.EMBEDDED).endSpec()
             .build();
 
     @BeforeEach
@@ -88,7 +88,7 @@ class DeployPluginWithoutDbTest implements InProcessTestUtil, FluentTraversals {
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_ACTION, Action.ADDED.name());
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_NAME, entandoPlugin.getMetadata().getName());
         System.setProperty(KubeUtils.ENTANDO_RESOURCE_NAMESPACE, entandoPlugin.getMetadata().getNamespace());
-        client.entandoResources().putEntandoPlugin(entandoPlugin);
+        client.entandoResources().createOrPatchEntandoResource(entandoPlugin);
         this.entandoPluginController = new EntandoPluginController(client, keycloakClient);
     }
 
