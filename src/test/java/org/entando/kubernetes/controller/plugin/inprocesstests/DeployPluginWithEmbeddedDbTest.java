@@ -18,7 +18,6 @@ package org.entando.kubernetes.controller.plugin.inprocesstests;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyString;
@@ -40,6 +39,7 @@ import org.entando.kubernetes.controller.inprocesstest.argumentcaptors.NamedArgu
 import org.entando.kubernetes.controller.inprocesstest.k8sclientdouble.EntandoResourceClientDouble;
 import org.entando.kubernetes.controller.inprocesstest.k8sclientdouble.SimpleK8SClientDouble;
 import org.entando.kubernetes.controller.plugin.EntandoPluginController;
+import org.entando.kubernetes.controller.spi.common.SecretUtils;
 import org.entando.kubernetes.controller.spi.container.KeycloakClientConfig;
 import org.entando.kubernetes.controller.support.client.SimpleK8SClient;
 import org.entando.kubernetes.controller.support.client.SimpleKeycloakClient;
@@ -64,7 +64,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @Tags({@Tag("in-process"), @Tag("pre-deployment"), @Tag("component")})
 //because SONAR doesn't recognize custome matchers and captors
 @SuppressWarnings({"java:S6068", "java:S6073"})
-class DeployPluginWithoutDbTest implements InProcessTestUtil, FluentTraversals {
+class DeployPluginWithEmbeddedDbTest implements InProcessTestUtil, FluentTraversals {
 
     static final String SERVER_PORT = "server-port";
     static final int PORT_8081 = 8081;
@@ -77,7 +77,7 @@ class DeployPluginWithoutDbTest implements InProcessTestUtil, FluentTraversals {
     @Mock
     private SimpleKeycloakClient keycloakClient;
     private EntandoPluginController entandoPluginController;
-    private final EntandoPlugin entandoPlugin = new EntandoPluginBuilder(newTestEntandoPlugin()).editSpec().withDbms(DbmsVendor.NONE)
+    private final EntandoPlugin entandoPlugin = new EntandoPluginBuilder(newTestEntandoPlugin()).editSpec().withDbms(DbmsVendor.EMBEDDED)
             .endSpec()
             .build();
 
@@ -147,9 +147,10 @@ class DeployPluginWithoutDbTest implements InProcessTestUtil, FluentTraversals {
                 is("/entando-data"));
         //And the JEE container uses an image reflecting the custom registry and Entando image version specified
         assertThat(serverContainer.getImage(), is("docker.io/entando/myplugin:6.0.0"));
-        assertFalse(pluginContainer.getEnv().stream().anyMatch(envVar -> envVar.getName().equalsIgnoreCase("SPRING_DATASOURCE_URL")));
-        assertFalse(pluginContainer.getEnv().stream().anyMatch(envVar -> envVar.getName().equalsIgnoreCase("SPRING_DATASOURCE_USERNAME")));
-        assertFalse(pluginContainer.getEnv().stream().anyMatch(envVar -> envVar.getName().equalsIgnoreCase("SPRING_DATASOURCE_PASSWORD")));
+        assertThat(theVariableNamed("SPRING_DATASOURCE_URL").on(thePrimaryContainerOn(serverDeployment)),
+                is("jdbc:h2:file:/entando-data/databases/server.db;DB_CLOSE_ON_EXIT=FALSE"));
+        assertThat(theVariableNamed("SPRING_DATASOURCE_USERNAME").on(thePrimaryContainerOn(serverDeployment)), is("sa"));
+        assertThat(theVariableNamed("SPRING_DATASOURCE_PASSWORD").on(thePrimaryContainerOn(serverDeployment)), is(""));
         //And Keycloak was configured to support OIDC Integration from the EntandoPlugin
         verify(keycloakClient, times(2))
                 .login(eq(MY_KEYCLOAK_BASE_URL), eq(MY_KEYCLOAK_ADMIN_USERNAME), anyString());
