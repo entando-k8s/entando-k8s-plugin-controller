@@ -77,7 +77,8 @@ class DeployPluginWithoutDbTest implements InProcessTestUtil, FluentTraversals {
     @Mock
     private SimpleKeycloakClient keycloakClient;
     private EntandoPluginController entandoPluginController;
-    private final EntandoPlugin entandoPlugin = new EntandoPluginBuilder(newTestEntandoPlugin()).editSpec().withDbms(DbmsVendor.EMBEDDED).endSpec()
+    private final EntandoPlugin entandoPlugin = new EntandoPluginBuilder(newTestEntandoPlugin()).editSpec().withDbms(DbmsVendor.EMBEDDED)
+            .endSpec()
             .build();
 
     @BeforeEach
