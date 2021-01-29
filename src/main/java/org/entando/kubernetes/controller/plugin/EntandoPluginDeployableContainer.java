@@ -77,7 +77,7 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAware, 
 
     @Override
     public Optional<DbmsVendor> getDbms() {
-        return Optional.empty();
+        return entandoPlugin.getSpec().getDbms();
     }
 
     @Override
