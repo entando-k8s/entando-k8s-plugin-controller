@@ -37,13 +37,11 @@ import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 public class EntandoPluginServerDeployable implements IngressingDeployable<EntandoPluginDeploymentResult, EntandoPluginSpec>,
         DbAwareDeployable {
 
-    private final DatabaseServiceResult databaseServiceResult;
     private final EntandoPlugin entandoPlugin;
     private final List<DeployableContainer> containers;
 
     public EntandoPluginServerDeployable(DatabaseServiceResult databaseServiceResult,
             KeycloakConnectionConfig keycloakConnectionConfig, EntandoPlugin entandoPlugin) {
-        this.databaseServiceResult = databaseServiceResult;
         this.entandoPlugin = entandoPlugin;
         //TODO make decision on which other containers to include based on the EntandoPlugin.spec
         this.containers = new ArrayList<>();
