@@ -54,7 +54,8 @@ public class EntandoPluginController extends AbstractDbAwareController<EntandoPl
         DatabaseServiceResult databaseServiceResult = null;
         DbmsVendor dbmsVendor = newEntandoPlugin.getSpec().getDbms().orElse(DbmsVendor.NONE);
         databaseServiceResult = prepareDatabaseService(newEntandoPlugin, dbmsVendor);
-        KeycloakConnectionConfig keycloakConnectionConfig = k8sClient.entandoResources().findKeycloak(newEntandoPlugin);
+        KeycloakConnectionConfig keycloakConnectionConfig = k8sClient.entandoResources()
+                .findKeycloak(newEntandoPlugin, newEntandoPlugin.getSpec()::getKeycloakToUse);
         keycloakClient.login(keycloakConnectionConfig.determineBaseUrl(), keycloakConnectionConfig.getUsername(),
                 keycloakConnectionConfig.getPassword());
         IngressingDeployCommand<EntandoPluginDeploymentResult> deployPluginServerCommand = new IngressingDeployCommand<>(
