@@ -16,7 +16,8 @@
 
 package org.entando.kubernetes.controller.plugin.interprocesstests;
 
-import static org.entando.kubernetes.controller.KubeUtils.snakeCaseOf;
+
+import static org.entando.kubernetes.controller.spi.common.NameUtils.snakeCaseOf;
 
 import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.KeycloakIntegrationTestHelper;
@@ -31,7 +32,6 @@ import org.junit.jupiter.api.Tags;
 import org.junit.jupiter.api.Test;
 
 @Tags({@Tag("end-to-end-disabled"), @Tag("inter-process-disabled"), @Tag("oracle")})
-
 class AddEntandoPluginWithExternalOracleDatabaseIT extends AddEntandoPluginBaseIT {
 
     @Test
@@ -56,7 +56,7 @@ class AddEntandoPluginWithExternalOracleDatabaseIT extends AddEntandoPluginBaseI
         plugin.getMetadata().setName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME);
         SampleWriter.writeSample(plugin, "plugin-with-external-oracle-db");
         createAndWaitForPlugin(plugin, false);
-        verifyPluginServerDeployment();
+        verifyPluginServerDeployment(plugin);
     }
 
 }

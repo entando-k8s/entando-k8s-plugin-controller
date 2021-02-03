@@ -53,7 +53,7 @@ class AddEntandoPluginWithExternalPostgresqlDatabaseIT extends AddEntandoPluginB
         plugin.getMetadata().setName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME);
         SampleWriter.writeSample(plugin, "plugin-with-external-postgresql-db");
         createAndWaitForPlugin(plugin, false);
-        verifyPluginServerDeployment();
+        verifyPluginServerDeployment(plugin);
     }
 
 }

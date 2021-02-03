@@ -26,8 +26,6 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
-import org.entando.kubernetes.controller.KubeUtils;
-import org.entando.kubernetes.controller.database.DbmsDockerVendorStrategy;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoOperatorTestConfig;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoOperatorTestConfig.TestTarget;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
@@ -36,16 +34,27 @@ import org.entando.kubernetes.controller.integrationtest.support.HttpTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.K8SIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.KeycloakIntegrationTestHelper;
 import org.entando.kubernetes.controller.plugin.EntandoPluginController;
+import org.entando.kubernetes.controller.spi.common.DbmsDockerVendorStrategy;
+import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
+import org.entando.kubernetes.controller.spi.common.NameUtils;
+import org.entando.kubernetes.controller.support.client.InfrastructureConfig;
+import org.entando.kubernetes.controller.test.support.CommonLabels;
 import org.entando.kubernetes.model.DbmsVendor;
+import org.entando.kubernetes.model.ResourceReference;
 import org.entando.kubernetes.model.externaldatabase.EntandoDatabaseService;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
-abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting {
+abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting, CommonLabels {
+
+    public static final String CLUSTER_INFRASTRUCTURE_NAMESPACE = EntandoOperatorTestConfig
+            .calculateNameSpace("entando-infra-namespace");
+    public static final String CLUSTER_INFRASTRUCTURE_NAME = EntandoOperatorTestConfig.calculateName("eti");
 
     protected static final DbmsVendor DBMS = DbmsVendor.POSTGRESQL;
-    protected static final DbmsDockerVendorStrategy DBMS_STRATEGY = DbmsDockerVendorStrategy.forVendor(DBMS);
+    protected static final DbmsDockerVendorStrategy DBMS_STRATEGY = DbmsDockerVendorStrategy
+            .forVendor(DBMS, EntandoOperatorSpiConfig.getComplianceMode());
     protected String pluginHostName;
     protected K8SIntegrationTestHelper helper = new K8SIntegrationTestHelper();
 
@@ -70,47 +79,70 @@ abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting {
         pluginHostName = EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "." + this.helper.getDomainSuffix();
     }
 
-    void createAndWaitForPlugin(EntandoPlugin plugin, boolean isDbEmbedded) {
-        helper.clusterInfrastructure().ensureInfrastructureConnectionConfig();
+    void createAndWaitForPlugin(EntandoPlugin plugin, boolean isContainerizedDb) {
+        ensureInfrastructureConnectionConfig();
         String name = plugin.getMetadata().getName();
-        helper.keycloak().deleteKeycloakClients(plugin, name + "-" + KubeUtils.DEFAULT_SERVER_QUALIFIER, name + "-sidecar");
-        helper.entandoPlugins().createAndWaitForPlugin(plugin, isDbEmbedded);
+        helper.keycloak().deleteKeycloakClients(plugin, name + "-" + NameUtils.DEFAULT_SERVER_QUALIFIER, name + "-sidecar");
+        helper.entandoPlugins().createAndWaitForPlugin(plugin, isContainerizedDb);
+    }
+
+    //TODO get rid of this once we deploy K8S with the operator
+    public void ensureInfrastructureConnectionConfig() {
+        helper.entandoPlugins().loadDefaultOperatorConfigMap()
+                .addToData(InfrastructureConfig.DEFAULT_CLUSTER_INFRASTRUCTURE_NAMESPACE_KEY, CLUSTER_INFRASTRUCTURE_NAMESPACE)
+                .addToData(InfrastructureConfig.DEFAULT_CLUSTER_INFRASTRUCTURE_NAME_KEY, CLUSTER_INFRASTRUCTURE_NAME)
+                .done();
+        ResourceReference infrastructureToUse = new ResourceReference(CLUSTER_INFRASTRUCTURE_NAMESPACE, CLUSTER_INFRASTRUCTURE_NAME);
+        delete(helper.getClient().configMaps())
+                .named(InfrastructureConfig.connectionConfigMapNameFor(infrastructureToUse))
+                .fromNamespace(CLUSTER_INFRASTRUCTURE_NAMESPACE)
+                .waitingAtMost(20, SECONDS);
+        String hostName = "http://" + CLUSTER_INFRASTRUCTURE_NAME + "." + helper.getDomainSuffix();
+        helper.getClient().configMaps()
+                .inNamespace(CLUSTER_INFRASTRUCTURE_NAMESPACE)
+                .createNew()
+                .withNewMetadata()
+                .withName(InfrastructureConfig.connectionConfigMapNameFor(infrastructureToUse))
+                .endMetadata()
+                .addToData(InfrastructureConfig.ENTANDO_K8S_SERVICE_CLIENT_ID_KEY, CLUSTER_INFRASTRUCTURE_NAME + "-k8s-svc")
+                .addToData(InfrastructureConfig.ENTANDO_K8S_SERVICE_INTERNAL_URL_KEY, hostName + "/k8s")
+                .addToData(InfrastructureConfig.ENTANDO_K8S_SERVICE_EXTERNAL_URL_KEY, hostName + "/k8s")
+                .done();
     }
 
     @AfterEach
     void afterwards() {
-
         helper.afterTest();
     }
 
-    protected void verifyPluginDatabasePreparation() {
-        Pod pod = helper.getClient().pods().inNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
-                .withLabel(KubeUtils.DB_JOB_LABEL_NAME, EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-server-db-job")
+    protected void verifyPluginDatabasePreparation(EntandoPlugin plugin) {
+        Pod pod = helper.getClient().pods().inNamespace(plugin.getMetadata().getNamespace())
+                .withLabels(dbPreparationJobLabels(plugin, NameUtils.DEFAULT_SERVER_QUALIFIER))
                 .list().getItems().get(0);
-        assertThat(theInitContainerNamed(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-plugindb-schema-creation-job").on(pod)
+        assertThat(theInitContainerNamed(plugin.getMetadata().getName() + "-plugindb-schema-creation-job").on(pod)
                         .getImage(),
                 containsString("entando-k8s-dbjob"));
         pod.getStatus().getInitContainerStatuses()
                 .forEach(containerStatus -> assertThat(containerStatus.getState().getTerminated().getExitCode(), is(0)));
     }
 
-    protected void verifyPluginServerDeployment() {
+    protected void verifyPluginServerDeployment(EntandoPlugin plugin) {
         Deployment serverDeployment = helper.getClient().apps().deployments()
-                .inNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
-                .withName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-server-deployment").fromServer().get();
+                .inNamespace(plugin.getMetadata().getNamespace())
+                .withName(plugin.getMetadata().getName() + "-server-deployment").fromServer().get();
         assertThat(thePortNamed("server-port")
                 .on(theContainerNamed("server-container").on(serverDeployment))
                 .getContainerPort(), is(8081));
-        Service service = helper.getClient().services().inNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
-                .withName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-server-service").fromServer().get();
+        Service service = helper.getClient().services().inNamespace(plugin.getMetadata().getNamespace())
+                .withName(plugin.getMetadata().getName() + "-server-service").fromServer().get();
         assertThat(thePortNamed("server-port").on(service).getPort(), is(8081));
         assertTrue(serverDeployment.getStatus().getReadyReplicas() >= 1);
         await().atMost(10, TimeUnit.SECONDS)
                 .until(() -> HttpTestHelper.read(HttpTestHelper.getDefaultProtocol() + "://" + pluginHostName + "/avatarPlugin/index.html")
                         .contains("JHipster microservice homepage"));
         assertTrue(helper.entandoPlugins().getOperations()
-                .inNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
-                .withName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME)
+                .inNamespace(plugin.getMetadata().getNamespace())
+                .withName(plugin.getMetadata().getName())
                 .fromServer().get().getStatus()
                 .forServerQualifiedBy("server").isPresent());
         await().atMost(10, TimeUnit.SECONDS).until(() -> Arrays.asList(403, 401)

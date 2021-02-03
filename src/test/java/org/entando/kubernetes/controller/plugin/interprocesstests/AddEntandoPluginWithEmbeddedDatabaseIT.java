@@ -16,16 +16,10 @@
 
 package org.entando.kubernetes.controller.plugin.interprocesstests;
 
-import static java.lang.String.format;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.core.Is.is;
-
-import io.fabric8.kubernetes.api.model.Service;
-import io.fabric8.kubernetes.api.model.apps.Deployment;
-import java.util.concurrent.TimeUnit;
 import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.KeycloakIntegrationTestHelper;
 import org.entando.kubernetes.controller.integrationtest.support.SampleWriter;
+import org.entando.kubernetes.model.DbmsVendor;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
@@ -44,7 +38,7 @@ class AddEntandoPluginWithEmbeddedDatabaseIT extends AddEntandoPluginBaseIT {
                 .withNewKeycloakToUse()
                 .withRealm(KeycloakIntegrationTestHelper.KEYCLOAK_REALM)
                 .endKeycloakToUse()
-                .withDbms(DBMS)
+                .withDbms(DbmsVendor.EMBEDDED)
                 .withReplicas(1)
                 .withIngressHostName(pluginHostName)
                 .withHealthCheckPath("/management/health")
@@ -54,24 +48,8 @@ class AddEntandoPluginWithEmbeddedDatabaseIT extends AddEntandoPluginBaseIT {
                 .endSpec()
                 .build();
         plugin.getMetadata().setName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME);
-        SampleWriter.writeSample(plugin, format("plugin-with-embedded-%s-db", DBMS.toValue()));
-        createAndWaitForPlugin(plugin, true);
-        verifyPluginDbDeployment();
-        verifyPluginDatabasePreparation();
-        verifyPluginServerDeployment();
-    }
-
-    private void verifyPluginDbDeployment() {
-        Deployment deployment = helper.getClient().apps().deployments()
-                .inNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
-                .withName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-db-deployment").fromServer().get();
-        assertThat(thePortNamed(DB_PORT)
-                        .on(theContainerNamed("db-container").on(deployment))
-                        .getContainerPort(),
-                is(DBMS_STRATEGY.getPort()));
-        Service dbService = helper.getClient().services().inNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
-                .withName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "-db-service").fromServer().get();
-        assertThat(thePortNamed(DB_PORT).on(dbService).getPort(), is(DBMS_STRATEGY.getPort()));
-        await().atMost(20, TimeUnit.SECONDS).ignoreExceptions().until(() -> deployment.getStatus().getReadyReplicas() >= 1);
+        SampleWriter.writeSample(plugin, "plugin-with-embedded-db");
+        createAndWaitForPlugin(plugin, false);
+        verifyPluginServerDeployment(plugin);
     }
 }

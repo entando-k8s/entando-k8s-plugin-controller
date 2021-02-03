@@ -18,20 +18,19 @@ package org.entando.kubernetes.controller.plugin;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.quarkus.runtime.StartupEvent;
-import java.util.Optional;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
-import org.entando.kubernetes.controller.AbstractDbAwareController;
-import org.entando.kubernetes.controller.IngressingDeployCommand;
-import org.entando.kubernetes.controller.KeycloakConnectionConfig;
-import org.entando.kubernetes.controller.SimpleKeycloakClient;
-import org.entando.kubernetes.controller.database.DatabaseServiceResult;
-import org.entando.kubernetes.controller.k8sclient.SimpleK8SClient;
+import org.entando.kubernetes.controller.spi.container.KeycloakConnectionConfig;
+import org.entando.kubernetes.controller.spi.result.DatabaseServiceResult;
+import org.entando.kubernetes.controller.support.client.SimpleK8SClient;
+import org.entando.kubernetes.controller.support.client.SimpleKeycloakClient;
+import org.entando.kubernetes.controller.support.command.IngressingDeployCommand;
+import org.entando.kubernetes.controller.support.controller.AbstractDbAwareController;
 import org.entando.kubernetes.model.DbmsVendor;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginSpec;
 
-public class EntandoPluginController extends AbstractDbAwareController<EntandoPlugin> {
+public class EntandoPluginController extends AbstractDbAwareController<EntandoPluginSpec, EntandoPlugin> {
 
     @Inject
     public EntandoPluginController(KubernetesClient kubernetesClient) {
@@ -54,15 +53,14 @@ public class EntandoPluginController extends AbstractDbAwareController<EntandoPl
     protected void synchronizeDeploymentState(EntandoPlugin newEntandoPlugin) {
         DatabaseServiceResult databaseServiceResult = null;
         DbmsVendor dbmsVendor = newEntandoPlugin.getSpec().getDbms().orElse(DbmsVendor.NONE);
-        if (dbmsVendor != DbmsVendor.NONE) {
-            databaseServiceResult = prepareDatabaseService(newEntandoPlugin, dbmsVendor, "db");
-        }
-        KeycloakConnectionConfig keycloakConnectionConfig = k8sClient.entandoResources().findKeycloak(newEntandoPlugin);
+        databaseServiceResult = prepareDatabaseService(newEntandoPlugin, dbmsVendor);
+        KeycloakConnectionConfig keycloakConnectionConfig = k8sClient.entandoResources()
+                .findKeycloak(newEntandoPlugin, newEntandoPlugin.getSpec()::getKeycloakToUse);
         keycloakClient.login(keycloakConnectionConfig.determineBaseUrl(), keycloakConnectionConfig.getUsername(),
                 keycloakConnectionConfig.getPassword());
-        IngressingDeployCommand<EntandoPluginDeploymentResult, EntandoPluginSpec> deployPluginServerCommand = new IngressingDeployCommand<>(
+        IngressingDeployCommand<EntandoPluginDeploymentResult> deployPluginServerCommand = new IngressingDeployCommand<>(
                 new EntandoPluginServerDeployable(databaseServiceResult, keycloakConnectionConfig, newEntandoPlugin));
-        EntandoPluginDeploymentResult result = deployPluginServerCommand.execute(k8sClient, Optional.of(keycloakClient));
+        EntandoPluginDeploymentResult result = deployPluginServerCommand.execute(k8sClient, keycloakClient);
         k8sClient.entandoResources().updateStatus(newEntandoPlugin, result.getStatus());
     }
 }
