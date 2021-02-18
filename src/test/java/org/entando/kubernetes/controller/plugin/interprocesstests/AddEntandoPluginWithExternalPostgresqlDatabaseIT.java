@@ -16,12 +16,12 @@
 
 package org.entando.kubernetes.controller.plugin.interprocesstests;
 
-import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
-import org.entando.kubernetes.controller.integrationtest.support.KeycloakIntegrationTestHelper;
-import org.entando.kubernetes.controller.integrationtest.support.SampleWriter;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
+import org.entando.kubernetes.test.e2etest.common.SampleWriter;
+import org.entando.kubernetes.test.e2etest.helpers.EntandoPluginE2ETestHelper;
+import org.entando.kubernetes.test.e2etest.helpers.KeycloakE2ETestHelper;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Tags;
 import org.junit.jupiter.api.Test;
@@ -33,24 +33,24 @@ class AddEntandoPluginWithExternalPostgresqlDatabaseIT extends AddEntandoPluginB
     void testCreate() {
         //Given I have an external PostgreSQL database
         helper.externalDatabases()
-                .prepareExternalPostgresqlDatabase(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE, "EntandoPlugin");
+                .prepareExternalPostgresqlDatabase(EntandoPluginE2ETestHelper.TEST_PLUGIN_NAMESPACE, "EntandoPlugin");
         //When I create an EntandoPlugin custom resource
         EntandoPlugin plugin = new EntandoPluginBuilder().withNewSpec()
                 .withImage("entando/entando-avatar-plugin")
                 .withDbms(DBMS)
                 .withReplicas(1)
                 .withNewKeycloakToUse()
-                .withRealm(KeycloakIntegrationTestHelper.KEYCLOAK_REALM)
+                .withRealm(KeycloakE2ETestHelper.KEYCLOAK_REALM)
                 .endKeycloakToUse()
                 .withHealthCheckPath("/management/health")
                 .withIngressPath("/avatarPlugin")
                 .withSecurityLevel(PluginSecurityLevel.LENIENT)
                 .withIngressHostName(pluginHostName)
-                .addNewConnectionConfigName(EntandoPluginIntegrationTestHelper.PAM_CONNECTION_CONFIG)
+                .addNewConnectionConfigName(EntandoPluginE2ETestHelper.PAM_CONNECTION_CONFIG)
                 .endSpec()
                 .build();
 
-        plugin.getMetadata().setName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME);
+        plugin.getMetadata().setName(EntandoPluginE2ETestHelper.TEST_PLUGIN_NAME);
         SampleWriter.writeSample(plugin, "plugin-with-external-postgresql-db");
         createAndWaitForPlugin(plugin, false);
         verifyPluginServerDeployment(plugin);

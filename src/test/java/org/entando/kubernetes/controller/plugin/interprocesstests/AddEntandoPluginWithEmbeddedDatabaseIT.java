@@ -16,13 +16,13 @@
 
 package org.entando.kubernetes.controller.plugin.interprocesstests;
 
-import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
-import org.entando.kubernetes.controller.integrationtest.support.KeycloakIntegrationTestHelper;
-import org.entando.kubernetes.controller.integrationtest.support.SampleWriter;
 import org.entando.kubernetes.model.DbmsVendor;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
+import org.entando.kubernetes.test.e2etest.common.SampleWriter;
+import org.entando.kubernetes.test.e2etest.helpers.EntandoPluginE2ETestHelper;
+import org.entando.kubernetes.test.e2etest.helpers.KeycloakE2ETestHelper;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Tags;
 import org.junit.jupiter.api.Test;
@@ -36,7 +36,7 @@ class AddEntandoPluginWithEmbeddedDatabaseIT extends AddEntandoPluginBaseIT {
                 .withNewSpec()
                 .withImage("entando/entando-avatar-plugin")
                 .withNewKeycloakToUse()
-                .withRealm(KeycloakIntegrationTestHelper.KEYCLOAK_REALM)
+                .withRealm(KeycloakE2ETestHelper.KEYCLOAK_REALM)
                 .endKeycloakToUse()
                 .withDbms(DbmsVendor.EMBEDDED)
                 .withReplicas(1)
@@ -44,10 +44,10 @@ class AddEntandoPluginWithEmbeddedDatabaseIT extends AddEntandoPluginBaseIT {
                 .withHealthCheckPath("/management/health")
                 .withIngressPath("/avatarPlugin")
                 .withSecurityLevel(PluginSecurityLevel.STRICT)
-                .addNewConnectionConfigName(EntandoPluginIntegrationTestHelper.PAM_CONNECTION_CONFIG)
+                .addNewConnectionConfigName(EntandoPluginE2ETestHelper.PAM_CONNECTION_CONFIG)
                 .endSpec()
                 .build();
-        plugin.getMetadata().setName(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME);
+        plugin.getMetadata().setName(EntandoPluginE2ETestHelper.TEST_PLUGIN_NAME);
         SampleWriter.writeSample(plugin, "plugin-with-embedded-db");
         createAndWaitForPlugin(plugin, false);
         verifyPluginServerDeployment(plugin);
