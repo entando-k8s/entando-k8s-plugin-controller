@@ -26,23 +26,23 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
-import org.entando.kubernetes.controller.integrationtest.support.EntandoOperatorTestConfig;
-import org.entando.kubernetes.controller.integrationtest.support.EntandoOperatorTestConfig.TestTarget;
-import org.entando.kubernetes.controller.integrationtest.support.EntandoPluginIntegrationTestHelper;
-import org.entando.kubernetes.controller.integrationtest.support.FluentIntegrationTesting;
-import org.entando.kubernetes.controller.integrationtest.support.HttpTestHelper;
-import org.entando.kubernetes.controller.integrationtest.support.K8SIntegrationTestHelper;
-import org.entando.kubernetes.controller.integrationtest.support.KeycloakIntegrationTestHelper;
+import org.entando.kubernetes.client.EntandoOperatorTestConfig;
+import org.entando.kubernetes.client.EntandoOperatorTestConfig.TestTarget;
+import org.entando.kubernetes.client.integrationtesthelpers.FluentIntegrationTesting;
+import org.entando.kubernetes.client.integrationtesthelpers.HttpTestHelper;
 import org.entando.kubernetes.controller.plugin.EntandoPluginController;
 import org.entando.kubernetes.controller.spi.common.DbmsDockerVendorStrategy;
 import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
 import org.entando.kubernetes.controller.spi.common.NameUtils;
 import org.entando.kubernetes.controller.support.client.InfrastructureConfig;
-import org.entando.kubernetes.controller.test.support.CommonLabels;
 import org.entando.kubernetes.model.DbmsVendor;
 import org.entando.kubernetes.model.ResourceReference;
 import org.entando.kubernetes.model.externaldatabase.EntandoDatabaseService;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
+import org.entando.kubernetes.test.common.CommonLabels;
+import org.entando.kubernetes.test.e2etest.helpers.EntandoPluginE2ETestHelper;
+import org.entando.kubernetes.test.e2etest.helpers.K8SIntegrationTestHelper;
+import org.entando.kubernetes.test.e2etest.helpers.KeycloakE2ETestHelper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -61,22 +61,22 @@ abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting, Commo
     @BeforeEach
     void cleanup() {
         this.helper.setTextFixture(
-                deleteAll(EntandoDatabaseService.class).fromNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
-                        .deleteAll(EntandoPlugin.class).fromNamespace(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE)
+                deleteAll(EntandoDatabaseService.class).fromNamespace(EntandoPluginE2ETestHelper.TEST_PLUGIN_NAMESPACE)
+                        .deleteAll(EntandoPlugin.class).fromNamespace(EntandoPluginE2ETestHelper.TEST_PLUGIN_NAMESPACE)
         );
-        this.helper.externalDatabases().deletePgTestPod(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE);
+        this.helper.externalDatabases().deletePgTestPod(EntandoPluginE2ETestHelper.TEST_PLUGIN_NAMESPACE);
         this.helper.keycloak().prepareDefaultKeycloakSecretAndConfigMap();
-        this.helper.keycloak().deleteRealm(KeycloakIntegrationTestHelper.KEYCLOAK_REALM);
+        this.helper.keycloak().deleteRealm(KeycloakE2ETestHelper.KEYCLOAK_REALM);
         if (EntandoOperatorTestConfig.getTestTarget() == TestTarget.K8S) {
             this.helper.entandoPlugins()
-                    .listenAndRespondWithImageVersionUnderTest(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE);
+                    .listenAndRespondWithImageVersionUnderTest(EntandoPluginE2ETestHelper.TEST_PLUGIN_NAMESPACE);
         } else {
             EntandoPluginController controller = new EntandoPluginController(this.helper.getClient(), false);
             this.helper.entandoPlugins()
-                    .listenAndRespondWithStartupEvent(EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAMESPACE, controller::onStartup);
+                    .listenAndRespondWithStartupEvent(EntandoPluginE2ETestHelper.TEST_PLUGIN_NAMESPACE, controller::onStartup);
         }
         //Determine best guess hostnames for the Entando DE App Ingress
-        pluginHostName = EntandoPluginIntegrationTestHelper.TEST_PLUGIN_NAME + "." + this.helper.getDomainSuffix();
+        pluginHostName = EntandoPluginE2ETestHelper.TEST_PLUGIN_NAME + "." + this.helper.getDomainSuffix();
     }
 
     void createAndWaitForPlugin(EntandoPlugin plugin, boolean isContainerizedDb) {
@@ -88,7 +88,7 @@ abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting, Commo
 
     //TODO get rid of this once we deploy K8S with the operator
     public void ensureInfrastructureConnectionConfig() {
-        helper.entandoPlugins().loadDefaultOperatorConfigMap()
+        helper.entandoPlugins().loadDefaultCapabilitiesConfigMap()
                 .addToData(InfrastructureConfig.DEFAULT_CLUSTER_INFRASTRUCTURE_NAMESPACE_KEY, CLUSTER_INFRASTRUCTURE_NAMESPACE)
                 .addToData(InfrastructureConfig.DEFAULT_CLUSTER_INFRASTRUCTURE_NAME_KEY, CLUSTER_INFRASTRUCTURE_NAME)
                 .done();

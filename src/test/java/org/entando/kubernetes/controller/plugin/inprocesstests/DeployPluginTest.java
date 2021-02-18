@@ -50,12 +50,6 @@ import io.quarkus.runtime.StartupEvent;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
-import org.entando.kubernetes.controller.inprocesstest.InProcessTestUtil;
-import org.entando.kubernetes.controller.inprocesstest.argumentcaptors.KeycloakClientConfigArgumentCaptor;
-import org.entando.kubernetes.controller.inprocesstest.argumentcaptors.LabeledArgumentCaptor;
-import org.entando.kubernetes.controller.inprocesstest.argumentcaptors.NamedArgumentCaptor;
-import org.entando.kubernetes.controller.inprocesstest.k8sclientdouble.EntandoResourceClientDouble;
-import org.entando.kubernetes.controller.inprocesstest.k8sclientdouble.SimpleK8SClientDouble;
 import org.entando.kubernetes.controller.plugin.EntandoPluginController;
 import org.entando.kubernetes.controller.spi.common.EntandoOperatorComplianceMode;
 import org.entando.kubernetes.controller.spi.common.NameUtils;
@@ -65,17 +59,24 @@ import org.entando.kubernetes.controller.spi.container.KeycloakClientConfig;
 import org.entando.kubernetes.controller.spi.container.KeycloakName;
 import org.entando.kubernetes.controller.support.client.SimpleK8SClient;
 import org.entando.kubernetes.controller.support.client.SimpleKeycloakClient;
+import org.entando.kubernetes.controller.support.client.doubles.EntandoResourceClientDouble;
+import org.entando.kubernetes.controller.support.client.doubles.SimpleK8SClientDouble;
 import org.entando.kubernetes.controller.support.common.EntandoOperatorConfig;
 import org.entando.kubernetes.controller.support.common.EntandoOperatorConfigProperty;
 import org.entando.kubernetes.controller.support.common.KubeUtils;
 import org.entando.kubernetes.controller.support.common.SecurityMode;
-import org.entando.kubernetes.controller.test.support.CommonLabels;
-import org.entando.kubernetes.controller.test.support.FluentTraversals;
-import org.entando.kubernetes.controller.test.support.VariableReferenceAssertions;
 import org.entando.kubernetes.model.DbmsVendor;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
+import org.entando.kubernetes.test.common.CommonLabels;
+import org.entando.kubernetes.test.common.FluentTraversals;
+import org.entando.kubernetes.test.common.InProcessTestData;
+import org.entando.kubernetes.test.common.VariableReferenceAssertions;
+import org.entando.kubernetes.test.componenttest.InProcessTestUtil;
+import org.entando.kubernetes.test.componenttest.argumentcaptors.KeycloakClientConfigArgumentCaptor;
+import org.entando.kubernetes.test.componenttest.argumentcaptors.LabeledArgumentCaptor;
+import org.entando.kubernetes.test.componenttest.argumentcaptors.NamedArgumentCaptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -385,7 +386,7 @@ class DeployPluginTest implements InProcessTestUtil, FluentTraversals, VariableR
 
         //And the PluginController logged into Keycloak independently
         verify(keycloakClient, times(2))
-                .login(eq(MY_KEYCLOAK_BASE_URL), eq(MY_KEYCLOAK_ADMIN_USERNAME), anyString());
+                .login(eq(InProcessTestData.MY_KEYCLOAK_BASE_URL), eq(MY_KEYCLOAK_ADMIN_USERNAME), anyString());
 
         //And the state of both Deployments was reloaded from K8S
         verify(client.deployments()).loadDeployment(eq(newEntandoPlugin), eq(MY_PLUGIN_DB_DEPLOYMENT));
