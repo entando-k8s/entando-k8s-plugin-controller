@@ -26,12 +26,12 @@ import org.entando.kubernetes.controller.spi.container.KeycloakClientConfig;
 import org.entando.kubernetes.controller.spi.container.KeycloakConnectionConfig;
 import org.entando.kubernetes.controller.spi.container.KubernetesPermission;
 import org.entando.kubernetes.controller.spi.container.ParameterizableContainer;
-import org.entando.kubernetes.controller.spi.container.TlsAware;
+import org.entando.kubernetes.controller.spi.container.TrustStoreAware;
 import org.entando.kubernetes.controller.support.spibase.KeycloakAwareContainerBase;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginSpec;
 
-public class EntandoPluginSidecarDeployableContainer implements DeployableContainer, KeycloakAwareContainerBase, TlsAware,
+public class EntandoPluginSidecarDeployableContainer implements DeployableContainer, KeycloakAwareContainerBase, TrustStoreAware,
         ParameterizableContainer {
 
     public static final String REQUIRED_ROLE = "connection-config";

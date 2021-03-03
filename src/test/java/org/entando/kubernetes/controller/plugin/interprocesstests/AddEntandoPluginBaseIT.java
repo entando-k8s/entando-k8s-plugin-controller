@@ -35,6 +35,8 @@ import org.entando.kubernetes.controller.spi.common.DbmsDockerVendorStrategy;
 import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
 import org.entando.kubernetes.controller.spi.common.NameUtils;
 import org.entando.kubernetes.controller.support.client.InfrastructureConfig;
+import org.entando.kubernetes.controller.support.common.EntandoOperatorConfig;
+import org.entando.kubernetes.controller.support.common.TlsHelper;
 import org.entando.kubernetes.model.DbmsVendor;
 import org.entando.kubernetes.model.ResourceReference;
 import org.entando.kubernetes.model.externaldatabase.EntandoDatabaseService;
@@ -57,6 +59,12 @@ abstract class AddEntandoPluginBaseIT implements FluentIntegrationTesting, Commo
             .forVendor(DBMS, EntandoOperatorSpiConfig.getComplianceMode());
     protected String pluginHostName;
     protected K8SIntegrationTestHelper helper = new K8SIntegrationTestHelper();
+
+    protected AddEntandoPluginBaseIT() {
+        EntandoOperatorConfig.getCertificateAuthoritySecretName()
+                .ifPresent(s -> TlsHelper.trustCertificateAuthoritiesIn(helper.getClient().secrets().withName(s).get()));
+
+    }
 
     @BeforeEach
     void cleanup() {
