@@ -61,6 +61,12 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAware, 
     }
 
     @Override
+    public Optional<String> getStorageClass() {
+        return Optional.ofNullable(this.entandoPlugin.getSpec().getStorageClass()
+                .orElse(PersistentVolumeAware.super.getStorageClass().orElse(null)));
+    }
+
+    @Override
     public Optional<DatabaseSchemaConnectionInfo> getDatabaseSchema() {
         return databaseSchemaConnectionInfo.stream().findFirst();
     }
