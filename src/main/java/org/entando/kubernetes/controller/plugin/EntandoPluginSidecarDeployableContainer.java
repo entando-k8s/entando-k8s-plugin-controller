@@ -22,27 +22,37 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.entando.kubernetes.controller.spi.container.DeployableContainer;
-import org.entando.kubernetes.controller.spi.container.KeycloakClientConfig;
-import org.entando.kubernetes.controller.spi.container.KeycloakConnectionConfig;
 import org.entando.kubernetes.controller.spi.container.KubernetesPermission;
 import org.entando.kubernetes.controller.spi.container.ParameterizableContainer;
-import org.entando.kubernetes.controller.spi.container.TrustStoreAware;
-import org.entando.kubernetes.controller.support.spibase.KeycloakAwareContainerBase;
+import org.entando.kubernetes.controller.spi.container.SsoAwareContainer;
+import org.entando.kubernetes.controller.spi.container.SsoClientConfig;
+import org.entando.kubernetes.controller.spi.container.SsoConnectionInfo;
+import org.entando.kubernetes.controller.spi.container.TrustStoreAwareContainer;
+import org.entando.kubernetes.model.common.KeycloakToUse;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
-import org.entando.kubernetes.model.plugin.EntandoPluginSpec;
 
-public class EntandoPluginSidecarDeployableContainer implements DeployableContainer, KeycloakAwareContainerBase, TrustStoreAware,
+public class EntandoPluginSidecarDeployableContainer implements DeployableContainer, SsoAwareContainer, TrustStoreAwareContainer,
         ParameterizableContainer {
 
     public static final String REQUIRED_ROLE = "connection-config";
     private static final String ENTANDO_PLUGIN_SIDECAR_IMAGE = "entando/entando-plugin-sidecar";
 
     private final EntandoPlugin entandoPlugin;
-    private final KeycloakConnectionConfig keycloakConnectionConfig;
+    private final SsoConnectionInfo ssoConnectionInfo;
 
-    public EntandoPluginSidecarDeployableContainer(EntandoPlugin entandoPlugin, KeycloakConnectionConfig keycloakConnectionConfig) {
+    public EntandoPluginSidecarDeployableContainer(EntandoPlugin entandoPlugin, SsoConnectionInfo ssoConnectionInfo) {
         this.entandoPlugin = entandoPlugin;
-        this.keycloakConnectionConfig = keycloakConnectionConfig;
+        this.ssoConnectionInfo = ssoConnectionInfo;
+    }
+
+    @Override
+    public SsoConnectionInfo getSsoConnectionInfo() {
+        return ssoConnectionInfo;
+    }
+
+    @Override
+    public Optional<KeycloakToUse> getPreferredKeycloakToUse() {
+        return entandoPlugin.getSpec().getKeycloakToUse();
     }
 
     public static String keycloakClientIdOf(EntandoPlugin entandoPlugin) {
@@ -81,14 +91,10 @@ public class EntandoPluginSidecarDeployableContainer implements DeployableContai
         return vars;
     }
 
-    public KeycloakConnectionConfig getKeycloakConnectionConfig() {
-        return keycloakConnectionConfig;
-    }
-
     @Override
-    public KeycloakClientConfig getKeycloakClientConfig() {
+    public SsoClientConfig getSsoClientConfig() {
         String clientId = keycloakClientIdOf(this.entandoPlugin);
-        return new KeycloakClientConfig(getKeycloakRealmToUse(), clientId, clientId).withRole(REQUIRED_ROLE);
+        return new SsoClientConfig(getKeycloakRealmToUse(), clientId, clientId).withRole(REQUIRED_ROLE);
     }
 
     @Override
@@ -108,12 +114,7 @@ public class EntandoPluginSidecarDeployableContainer implements DeployableContai
     }
 
     @Override
-    public EntandoPluginSpec getKeycloakAwareSpec() {
-        return entandoPlugin.getSpec();
-    }
-
-    @Override
     public List<EnvVar> getEnvironmentVariableOverrides() {
-        return getKeycloakAwareSpec().getEnvironmentVariables();
+        return entandoPlugin.getSpec().getEnvironmentVariables();
     }
 }
