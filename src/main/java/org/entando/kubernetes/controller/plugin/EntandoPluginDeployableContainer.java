@@ -145,9 +145,7 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
                 entandoPlugin.getMetadata().getName() + "-" + getNameQualifier(),
                 entandoPlugin.getMetadata().getName(), entandoPlugin.getSpec().getRoles(),
                 entandoPlugin.getSpec().getPermissions())
-                .withRole(ENTANDO_APP_ROLE)
-                .withPermission(EntandoPluginSidecarDeployableContainer.keycloakClientIdOf(entandoPlugin),
-                        EntandoPluginSidecarDeployableContainer.REQUIRED_ROLE);
+                .withRole(ENTANDO_APP_ROLE);
     }
 
     @Override

@@ -23,8 +23,6 @@ import io.fabric8.kubernetes.api.model.extensions.Ingress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import org.entando.kubernetes.controller.spi.common.EntandoOperatorComplianceMode;
-import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
 import org.entando.kubernetes.controller.spi.common.NameUtils;
 import org.entando.kubernetes.controller.spi.container.DeployableContainer;
 import org.entando.kubernetes.controller.spi.container.SsoConnectionInfo;
@@ -32,7 +30,6 @@ import org.entando.kubernetes.controller.spi.deployable.DbAwareDeployable;
 import org.entando.kubernetes.controller.spi.result.DatabaseConnectionInfo;
 import org.entando.kubernetes.controller.support.spibase.IngressingDeployableBase;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
-import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 
 public class EntandoPluginServerDeployable
         implements IngressingDeployableBase<EntandoPluginDeploymentResult>, DbAwareDeployable<EntandoPluginDeploymentResult> {
@@ -44,13 +41,8 @@ public class EntandoPluginServerDeployable
     public EntandoPluginServerDeployable(DatabaseConnectionInfo databaseConnectionInfo,
             SsoConnectionInfo ssoConnectionInfo, EntandoPlugin entandoPlugin) {
         this.entandoPlugin = entandoPlugin;
-        //TODO make decision on which other containers to include based on the EntandoPlugin.spec
         this.containers = new ArrayList<>();
         this.containers.add(new EntandoPluginDeployableContainer(entandoPlugin, ssoConnectionInfo, databaseConnectionInfo));
-        if (EntandoOperatorSpiConfig.getComplianceMode() != EntandoOperatorComplianceMode.REDHAT
-                && entandoPlugin.getSpec().getSecurityLevel().orElse(PluginSecurityLevel.STRICT) == PluginSecurityLevel.LENIENT) {
-            this.containers.add(new EntandoPluginSidecarDeployableContainer(entandoPlugin, ssoConnectionInfo));
-        }
     }
 
     @Override

@@ -28,7 +28,6 @@ import io.fabric8.kubernetes.client.Watcher.Action;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import org.entando.kubernetes.controller.support.client.impl.DefaultSimpleK8SClient;
 import org.entando.kubernetes.controller.support.client.impl.EntandoOperatorTestConfig;
 import org.entando.kubernetes.controller.support.client.impl.integrationtesthelpers.FluentIntegrationTesting;
@@ -51,13 +50,15 @@ import org.junit.jupiter.api.Test;
 class EntandoPluginSmokeTest implements FluentIntegrationTesting {
 
     private static final String MY_NAMESPACE = EntandoOperatorTestConfig.calculateNameSpace("my-namespace");
-    public static final String MY_APP = EntandoOperatorTestConfig.calculateName("my-app");
+    public static final String MY_PLUGIN = EntandoOperatorTestConfig.calculateName("my-plugin");
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-    private EntandoPlugin entandoApp;
+    private EntandoPlugin entandoPlugin;
 
     @Test
     @Description("Should successfully connect to newly deployed Keycloak Server")
-    void testDeployment() throws TimeoutException {
+    void testDeployment() {
+        final String ingressHostName = MY_PLUGIN + "-" + MY_NAMESPACE + "." + EntandoOperatorConfig.getDefaultRoutingSuffix()
+                .orElse("apps.serv.run");
         KubernetesClient client = new DefaultKubernetesClient();
         final DefaultSimpleK8SClient simpleClient = new DefaultSimpleK8SClient(client);
         step("Given I have a clean namespace", () -> {
@@ -68,36 +69,39 @@ class EntandoPluginSmokeTest implements FluentIntegrationTesting {
                     .provideKeycloakCapability();
             attachment("SSO Capability", objectMapper.writeValueAsString(providedCapability));
         });
-        step("And I have created an EntandoPlugin custom resource", () -> {
-            this.entandoApp = simpleClient.entandoResources()
+        step("And I have created an EntandoPlugin custom resource requiring the PostgreSQL DBMS capability", () -> {
+            this.entandoPlugin = simpleClient.entandoResources()
                     .createOrPatchEntandoResource(
                             new EntandoPluginBuilder()
                                     .withNewMetadata()
                                     .withNamespace(MY_NAMESPACE)
-                                    .withName(MY_APP)
+                                    .withName(MY_PLUGIN)
                                     .endMetadata()
                                     .withNewSpec()
-                                    .withImage("entando/plugin-image:6.2.2")
+                                    .withIngressHostName(ingressHostName)
+                                    .withImage("entando/entando-avatar-plugin:6.0.5")
+                                    .withHealthCheckPath("/management/health")
+                                    .withIngressPath("/avatarPlugin")
                                     .withDbms(DbmsVendor.EMBEDDED)
                                     .endSpec()
                                     .build()
                     );
-            attachment("SSO Capability", objectMapper.writeValueAsString(this.entandoApp));
+            attachment("Entando Plugin", objectMapper.writeValueAsString(this.entandoPlugin));
         });
-        step("When I run the entando-k8s-app-controller container against the EntandoPlugin", () -> {
+        step("When I run the entando-k8s-plugin-controller container against the EntandoPlugin", () -> {
             ControllerExecutor executor = new ControllerExecutor(MY_NAMESPACE, simpleClient,
-                    r -> "entando-k8s-app-controller");
-            executor.runControllerFor(Action.ADDED, entandoApp,
-                    EntandoOperatorTestConfig.getVersionOfImageUnderTest().orElse("0.0.0-11"));
+                    r -> "entando-k8s-plugin-controller");
+            executor.runControllerFor(Action.ADDED, entandoPlugin,
+                    EntandoOperatorTestConfig.getVersionOfImageUnderTest().orElse("0.0.0-SNAPSHOT-2"));
         });
-        step("Then I can successfully login into the newly deployed Entando server", () -> {
+
+        step("Then I can successfully access the Plugin's health URL", () -> {
             final String strUrl =
-                    "http://" + MY_APP + "-" + MY_NAMESPACE + "." + EntandoOperatorConfig.getDefaultRoutingSuffix().orElse("apps.serv.run")
-                            + "/entando-de-app/api/health";
+                    "http://" + ingressHostName
+                            + "/avatarPlugin/management/health";
             await().atMost(1, TimeUnit.MINUTES).ignoreExceptions().until(() -> HttpTestHelper.statusOk(strUrl));
             assertThat(HttpTestHelper.statusOk(strUrl)).isTrue();
         });
-        //TODO spin up the AppBuilder test container here.
     }
 
 }
