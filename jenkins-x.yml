@@ -4,6 +4,8 @@ pipelineConfig:
   env:
     - name: PIPELINE_CODE
       value: pc
+    - name: SKIP_OWASP
+      value: "true"
     - name: TEST_DEPLOYMENT
       value: "true"
     - name: ENTANDO_K8S_OPERATOR_SECURITY_MODE
