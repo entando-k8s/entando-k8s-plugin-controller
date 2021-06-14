@@ -30,6 +30,7 @@ import io.qameta.allure.Feature;
 import java.util.concurrent.TimeUnit;
 import org.entando.kubernetes.controller.support.client.impl.DefaultSimpleK8SClient;
 import org.entando.kubernetes.controller.support.client.impl.EntandoOperatorTestConfig;
+import org.entando.kubernetes.controller.support.client.impl.SupportProducer;
 import org.entando.kubernetes.controller.support.client.impl.integrationtesthelpers.FluentIntegrationTesting;
 import org.entando.kubernetes.controller.support.client.impl.integrationtesthelpers.HttpTestHelper;
 import org.entando.kubernetes.controller.support.client.impl.integrationtesthelpers.TestFixturePreparation;
@@ -59,7 +60,7 @@ class EntandoPluginSmokeTest implements FluentIntegrationTesting {
     void testDeployment() {
         final String ingressHostName = MY_PLUGIN + "-" + MY_NAMESPACE + "." + EntandoOperatorConfig.getDefaultRoutingSuffix()
                 .orElse("apps.serv.run");
-        KubernetesClient client = new DefaultKubernetesClient();
+        final KubernetesClient client = new SupportProducer().getKubernetesClient();
         final DefaultSimpleK8SClient simpleClient = new DefaultSimpleK8SClient(client);
         step("Given I have a clean namespace", () -> {
             TestFixturePreparation.prepareTestFixture(client, deleteAll(EntandoPlugin.class).fromNamespace(MY_NAMESPACE));
