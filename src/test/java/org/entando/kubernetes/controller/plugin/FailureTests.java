@@ -118,7 +118,7 @@ class FailureTests extends PluginTestBase {
         step(format("And the %s ServerStatus carries the actual failure", NameUtils.MAIN_QUALIFIER), () -> {
             assertThat(
                     entandoPlugin.getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).get().getEntandoControllerFailure()
-                            .getDetailMessage())
+                            .get().getDetailMessage())
                     .contains("Test Exception");
             attachKubernetesResource("Failed EntandoPlugin", entandoPlugin);
         });
@@ -154,7 +154,7 @@ class FailureTests extends PluginTestBase {
                     .build();
         });
         step("But the controller to process requests for the DBMS capability provides a capability in 'FAILED' state",
-                () -> doAnswer(withFailedInternalServerStatus(NameUtils.MAIN_QUALIFIER, new NullPointerException()))
+                () -> doAnswer(withFailedServerStatus(NameUtils.MAIN_QUALIFIER, new NullPointerException()))
                         .when(client.capabilities())
                         .waitForCapabilityCompletion(argThat(matchesCapability(StandardCapability.DBMS)), anyInt()));
         ValueHolder<Throwable> throwable = new ValueHolder<>();
@@ -167,7 +167,7 @@ class FailureTests extends PluginTestBase {
         step("And the 'main' ServerStatus carries the actual failure", () -> {
             assertThat(
                     entandoPlugin.getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).get().getEntandoControllerFailure()
-                            .getDetailMessage())
+                            .get().getDetailMessage())
                     .contains(" Could not prepare database for EntandoPlugin my-namespace/my-plugin");
             attachKubernetesResource("Failed EntandoPlugin", entandoPlugin);
         });
@@ -204,7 +204,7 @@ class FailureTests extends PluginTestBase {
                     .build();
         });
         step("But the controller to process requests for the SSO capability provides a capability in 'FAILED' state",
-                () -> doAnswer(withFailedExposedServerStatus(NameUtils.MAIN_QUALIFIER, new NullPointerException()))
+                () -> doAnswer(withFailedServerStatus(NameUtils.MAIN_QUALIFIER, new NullPointerException()))
                         .when(client.capabilities())
                         .waitForCapabilityCompletion(argThat(matchesCapability(StandardCapability.SSO)), anyInt()));
         ValueHolder<Throwable> throwable = new ValueHolder<>();
@@ -217,7 +217,7 @@ class FailureTests extends PluginTestBase {
         step("And the 'main' ServerStatus carries the actual failure", () -> {
             assertThat(
                     entandoPlugin.getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).get().getEntandoControllerFailure()
-                            .getDetailMessage())
+                            .get().getDetailMessage())
                     .contains("Could not prepare SSO for EntandoPlugin my-namespace/my-plugin");
             attachKubernetesResource("Failed EntandoPlugin", entandoPlugin);
         });

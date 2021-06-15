@@ -40,6 +40,7 @@ import org.entando.kubernetes.model.capability.CapabilityScope;
 import org.entando.kubernetes.model.capability.StandardCapability;
 import org.entando.kubernetes.model.capability.StandardCapabilityImplementation;
 import org.entando.kubernetes.model.common.DbmsVendor;
+import org.entando.kubernetes.model.common.ServerStatus;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import picocli.CommandLine;
 
@@ -64,21 +65,22 @@ public class EntandoPluginController implements Runnable {
     public void run() {
         this.entandoPlugin = (EntandoPlugin) k8sClient.resolveCustomResourceToProcess(Collections.singletonList(EntandoPlugin.class));
         try {
+            this.entandoPlugin = k8sClient.deploymentStarted(entandoPlugin);
             final DatabaseConnectionInfo dbConnectionInfo = provideDatabaseIfRequired();
             final SsoConnectionInfo ssoConnectionInfo = provideSso();
             final EntandoPluginServerDeployable deployable = new EntandoPluginServerDeployable(dbConnectionInfo,
                     ssoConnectionInfo, entandoPlugin);
-            EntandoPluginDeploymentResult result = this.deploymentProcessor.processDeployable(deployable, calculateDbAwareTimeout());
-            entandoPlugin = k8sClient.updateStatus(entandoPlugin, result.getStatus());
+            this.deploymentProcessor.processDeployable(deployable, calculateDbAwareTimeout());
+            this.entandoPlugin = k8sClient.deploymentEnded(entandoPlugin);
         } catch (Exception e) {
             entandoPlugin = k8sClient.deploymentFailed(entandoPlugin, e, NameUtils.MAIN_QUALIFIER);
             LOGGER.log(Level.SEVERE, e, () -> format("EntandoPluginController failed:%n%s",
-                    entandoPlugin.getStatus().findFailedServerStatus().orElseThrow(IllegalStateException::new)
-                            .getEntandoControllerFailure().getDetailMessage()));
+                    entandoPlugin.getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).flatMap(ServerStatus::getEntandoControllerFailure)
+                            .orElseThrow(IllegalStateException::new)
+                            .getDetailMessage()));
         }
-        entandoPlugin = k8sClient.deploymentEnded(entandoPlugin);
-        entandoPlugin.getStatus().findFailedServerStatus().ifPresent(s -> {
-            throw new CommandLine.ExecutionException(new CommandLine(this), s.getEntandoControllerFailure().getDetailMessage());
+        entandoPlugin.getStatus().findFailedServerStatus().flatMap(ServerStatus::getEntandoControllerFailure).ifPresent(s -> {
+            throw new CommandLine.ExecutionException(new CommandLine(this), s.getDetailMessage());
         });
     }
 
@@ -102,6 +104,8 @@ public class EntandoPluginController implements Runnable {
                             .withImplementation(StandardCapabilityImplementation.valueOf(dbmsVendor.name()))
                             .withResolutionScopePreference(CapabilityScope.NAMESPACE, CapabilityScope.DEDICATED, CapabilityScope.CLUSTER)
                             .build(), 180);
+            capabilityResult.getProvidedCapability().getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).ifPresent(s ->
+                    this.entandoPlugin = this.k8sClient.updateStatus(entandoPlugin, new ServerStatus(NameUtils.DB_QUALIFIER, s)));
             capabilityResult.getControllerFailure().ifPresent(f -> {
                 throw new EntandoControllerException(format("Could not prepare database for EntandoPlugin %s/%s%n%s", entandoPlugin
                                 .getMetadata().getNamespace(), entandoPlugin
@@ -127,6 +131,8 @@ public class EntandoPluginController implements Runnable {
                         .withPreferredTlsSecretName(entandoPlugin.getSpec().getTlsSecretName().orElse(null))
                         .withResolutionScopePreference(CapabilityScope.NAMESPACE, CapabilityScope.CLUSTER)
                         .build(), 240);
+        capabilityResult.getProvidedCapability().getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).ifPresent(s ->
+                this.entandoPlugin = this.k8sClient.updateStatus(entandoPlugin, new ServerStatus(NameUtils.SSO_QUALIFIER, s)));
         capabilityResult.getControllerFailure().ifPresent(f -> {
             throw new EntandoControllerException(format("Could not prepare SSO for EntandoPlugin %s/%s%n%s", entandoPlugin
                             .getMetadata().getNamespace(), entandoPlugin

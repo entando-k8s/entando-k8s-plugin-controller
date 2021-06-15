@@ -40,7 +40,6 @@ import org.entando.kubernetes.model.capability.ProvidedCapability;
 import org.entando.kubernetes.model.capability.StandardCapability;
 import org.entando.kubernetes.model.common.DbmsVendor;
 import org.entando.kubernetes.model.common.EntandoDeploymentPhase;
-import org.entando.kubernetes.model.common.ExposedServerStatus;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
 import org.entando.kubernetes.test.common.SourceLink;
@@ -108,8 +107,9 @@ class DeployEntandoPluginTest extends PluginTestBase implements VariableReferenc
             final ProvidedCapability capability = getClient().entandoResources()
                     .load(ProvidedCapability.class, MY_NAMESPACE, "default-sso-in-namespace");
             assertThat(capability).isNotNull();
-            assertThat(((ExposedServerStatus) capability.getStatus().findCurrentServerStatus().get()).getExternalBaseUrl())
-                    .isEqualTo("https://mykeycloak.apps.serv.run/auth");
+            assertThat(capability.getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).get().getExternalBaseUrl())
+                    .contains("https://mykeycloak.apps.serv.run/auth");
+            assertThat(entandoPlugin.getStatus().getServerStatus(NameUtils.SSO_QUALIFIER)).isPresent();
             attachKubernetesResource(" Red Hat SSO Capability", capability);
         });
         final String dbSecret = "my-plugin-plugindb-secret";

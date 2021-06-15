@@ -169,6 +169,11 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
     }
 
     @Override
+    public Optional<Integer> getMaximumStartupTimeSeconds() {
+        return Optional.of(120);
+    }
+
+    @Override
     public List<EnvVar> getEnvironmentVariableOverrides() {
         return getKeycloakAwareSpec().getEnvironmentVariables();
     }
