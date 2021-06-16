@@ -27,6 +27,8 @@ import io.fabric8.kubernetes.client.Watcher.Action;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import java.util.concurrent.TimeUnit;
+import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
+import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfigProperty;
 import org.entando.kubernetes.controller.support.client.impl.DefaultSimpleK8SClient;
 import org.entando.kubernetes.controller.support.client.impl.EntandoOperatorTestConfig;
 import org.entando.kubernetes.controller.support.client.impl.SupportProducer;
@@ -92,7 +94,7 @@ class EntandoPluginSmokeTest implements FluentIntegrationTesting {
             ControllerExecutor executor = new ControllerExecutor(MY_NAMESPACE, simpleClient,
                     r -> "entando-k8s-plugin-controller");
             executor.runControllerFor(Action.ADDED, entandoPlugin,
-                    EntandoOperatorTestConfig.getVersionOfImageUnderTest().orElse("0.0.0-SNAPSHOT-2"));
+                    EntandoOperatorTestConfig.getVersionOfImageUnderTest().orElse("0.0.0-SNAPSHOT-PR-27-5"));
         });
 
         step("Then I can successfully access the Plugin's health URL", () -> {
