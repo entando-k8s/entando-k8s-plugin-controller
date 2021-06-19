@@ -33,41 +33,36 @@ import org.entando.kubernetes.controller.spi.container.ParameterizableContainer;
 import org.entando.kubernetes.controller.spi.container.PersistentVolumeAwareContainer;
 import org.entando.kubernetes.controller.spi.container.SpringBootDeployableContainer;
 import org.entando.kubernetes.controller.spi.container.SsoAwareContainer;
-import org.entando.kubernetes.controller.spi.container.SsoClientConfig;
-import org.entando.kubernetes.controller.spi.container.SsoConnectionInfo;
+import org.entando.kubernetes.controller.spi.deployable.SsoClientConfig;
+import org.entando.kubernetes.controller.spi.deployable.SsoConnectionInfo;
 import org.entando.kubernetes.controller.spi.result.DatabaseConnectionInfo;
 import org.entando.kubernetes.model.common.DbmsVendor;
 import org.entando.kubernetes.model.common.EntandoResourceRequirements;
 import org.entando.kubernetes.model.common.KeycloakAwareSpec;
-import org.entando.kubernetes.model.common.KeycloakToUse;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.PluginSecurityLevel;
 
-public class EntandoPluginDeployableContainer implements PersistentVolumeAwareContainer, SpringBootDeployableContainer,
+public class EntandoPluginDeployableContainer implements PersistentVolumeAwareContainer,
+        SpringBootDeployableContainer,
         ParameterizableContainer,
         ConfigurableResourceContainer, SsoAwareContainer {
-
-    public static final String ENTANDO_APP_ROLE = "entandoApp";
 
     public static final String PLUGINDB = "plugindb";
     private final EntandoPlugin entandoPlugin;
     private final SsoConnectionInfo ssoConnectionInfo;
     private final List<DatabaseSchemaConnectionInfo> databaseSchemaConnectionInfo;
+    private final SsoClientConfig ssoClientConfig;
 
     public EntandoPluginDeployableContainer(EntandoPlugin entandoPlugin, SsoConnectionInfo ssoConnectionInfo,
-            DatabaseConnectionInfo databaseConnectionInfo) {
+            DatabaseConnectionInfo databaseConnectionInfo, SsoClientConfig ssoClientConfig) {
         this.entandoPlugin = entandoPlugin;
         this.ssoConnectionInfo = ssoConnectionInfo;
+        this.ssoClientConfig = ssoClientConfig;
         this.databaseSchemaConnectionInfo = ofNullable(databaseConnectionInfo)
                 .map(databaseServiceResult1 -> DbAwareContainer
                         .buildDatabaseSchemaConnectionInfo(entandoPlugin, databaseConnectionInfo, Collections.singletonList(PLUGINDB)))
                 .orElse(Collections.emptyList());
 
-    }
-
-    @Override
-    public Optional<KeycloakToUse> getPreferredKeycloakToUse() {
-        return this.getKeycloakAwareSpec().getKeycloakToUse();
     }
 
     @Override
@@ -94,6 +89,11 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
     @Override
     public Optional<DbmsVendor> getDbms() {
         return entandoPlugin.getSpec().getDbms();
+    }
+
+    @Override
+    public SsoClientConfig getSsoClientConfig() {
+        return ssoClientConfig;
     }
 
     @Override
@@ -137,15 +137,6 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
     @Override
     public SsoConnectionInfo getSsoConnectionInfo() {
         return this.ssoConnectionInfo;
-    }
-
-    @Override
-    public SsoClientConfig getSsoClientConfig() {
-        return new SsoClientConfig(getKeycloakRealmToUse(),
-                entandoPlugin.getMetadata().getName() + "-" + getNameQualifier(),
-                entandoPlugin.getMetadata().getName(), entandoPlugin.getSpec().getRoles(),
-                entandoPlugin.getSpec().getPermissions())
-                .withRole(ENTANDO_APP_ROLE);
     }
 
     @Override

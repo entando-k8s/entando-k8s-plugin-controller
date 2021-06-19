@@ -25,24 +25,52 @@ import java.util.List;
 import java.util.Optional;
 import org.entando.kubernetes.controller.spi.common.NameUtils;
 import org.entando.kubernetes.controller.spi.container.DeployableContainer;
-import org.entando.kubernetes.controller.spi.container.SsoConnectionInfo;
+import org.entando.kubernetes.controller.spi.container.KeycloakName;
 import org.entando.kubernetes.controller.spi.deployable.DbAwareDeployable;
+import org.entando.kubernetes.controller.spi.deployable.SsoAwareDeployable;
+import org.entando.kubernetes.controller.spi.deployable.SsoClientConfig;
+import org.entando.kubernetes.controller.spi.deployable.SsoConnectionInfo;
 import org.entando.kubernetes.controller.spi.result.DatabaseConnectionInfo;
 import org.entando.kubernetes.controller.support.spibase.IngressingDeployableBase;
+import org.entando.kubernetes.model.common.KeycloakToUse;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 
-public class EntandoPluginServerDeployable
-        implements IngressingDeployableBase<EntandoPluginDeploymentResult>, DbAwareDeployable<EntandoPluginDeploymentResult> {
+public class EntandoPluginServerDeployable implements IngressingDeployableBase<EntandoPluginDeploymentResult>,
+        DbAwareDeployable<EntandoPluginDeploymentResult>,
+        SsoAwareDeployable<EntandoPluginDeploymentResult> {
 
+    public static final String ENTANDO_APP_ROLE = "entandoApp";
     public static final long DEFAULT_USER_ID = 185L;
     private final EntandoPlugin entandoPlugin;
     private final List<DeployableContainer> containers;
+    private final SsoConnectionInfo ssoConnectionInfo;
 
     public EntandoPluginServerDeployable(DatabaseConnectionInfo databaseConnectionInfo,
             SsoConnectionInfo ssoConnectionInfo, EntandoPlugin entandoPlugin) {
         this.entandoPlugin = entandoPlugin;
         this.containers = new ArrayList<>();
-        this.containers.add(new EntandoPluginDeployableContainer(entandoPlugin, ssoConnectionInfo, databaseConnectionInfo));
+        this.ssoConnectionInfo = ssoConnectionInfo;
+        this.containers
+                .add(new EntandoPluginDeployableContainer(entandoPlugin, ssoConnectionInfo, databaseConnectionInfo, getSsoClientConfig()));
+    }
+
+    @Override
+    public SsoConnectionInfo getSsoConnectionInfo() {
+        return this.ssoConnectionInfo;
+    }
+
+    @Override
+    public SsoClientConfig getSsoClientConfig() {
+        return new SsoClientConfig(determineRealm(entandoPlugin, getSsoConnectionInfo()),
+                entandoPlugin.getMetadata().getName() + "-" + NameUtils.DEFAULT_SERVER_QUALIFIER,
+                entandoPlugin.getMetadata().getName(), entandoPlugin.getSpec().getRoles(),
+                entandoPlugin.getSpec().getPermissions())
+                .withRole(ENTANDO_APP_ROLE);
+    }
+
+    public static String determineRealm(EntandoPlugin entandoApp, SsoConnectionInfo ssoConnectionInfo) {
+        return entandoApp.getSpec().getKeycloakToUse().flatMap(KeycloakToUse::getRealm).or(() -> ssoConnectionInfo.getDefaultRealm())
+                .orElse(KeycloakName.ENTANDO_DEFAULT_KEYCLOAK_REALM);
     }
 
     @Override
