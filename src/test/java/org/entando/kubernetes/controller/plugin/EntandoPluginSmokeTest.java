@@ -27,8 +27,6 @@ import io.fabric8.kubernetes.client.Watcher.Action;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import java.util.concurrent.TimeUnit;
-import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
-import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfigProperty;
 import org.entando.kubernetes.controller.support.client.impl.DefaultSimpleK8SClient;
 import org.entando.kubernetes.controller.support.client.impl.EntandoOperatorTestConfig;
 import org.entando.kubernetes.controller.support.client.impl.SupportProducer;
@@ -57,7 +55,7 @@ class EntandoPluginSmokeTest implements FluentIntegrationTesting {
     private EntandoPlugin entandoPlugin;
 
     @Test
-    @Description("Should successfully connect to newly deployed Keycloak Server")
+    @Description("Should successfully connect to newly deployed Entando Plugin")
     void testDeployment() {
         final String ingressHostName = MY_PLUGIN + "-" + MY_NAMESPACE + "." + EntandoOperatorConfig.getDefaultRoutingSuffix()
                 .orElse("apps.serv.run");
@@ -71,7 +69,7 @@ class EntandoPluginSmokeTest implements FluentIntegrationTesting {
                     .provideKeycloakCapability();
             attachment("SSO Capability", objectMapper.writeValueAsString(providedCapability));
         });
-        step("And I have created an EntandoPlugin custom resource requiring the PostgreSQL DBMS capability", () -> {
+        step("And I have created an EntandoPlugin custom resource with an Embedded DBMS", () -> {
             this.entandoPlugin = simpleClient.entandoResources()
                     .createOrPatchEntandoResource(
                             new EntandoPluginBuilder()
@@ -99,7 +97,7 @@ class EntandoPluginSmokeTest implements FluentIntegrationTesting {
 
         step("Then I can successfully access the Plugin's health URL", () -> {
             final String strUrl =
-                    "http://" + ingressHostName
+                    HttpTestHelper.getDefaultProtocol() + "://" + ingressHostName
                             + "/avatarPlugin/management/health";
             await().atMost(1, TimeUnit.MINUTES).ignoreExceptions().until(() -> HttpTestHelper.statusOk(strUrl));
             assertThat(HttpTestHelper.statusOk(strUrl)).isTrue();
