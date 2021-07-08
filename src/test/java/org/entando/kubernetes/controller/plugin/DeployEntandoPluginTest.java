@@ -115,7 +115,8 @@ class DeployEntandoPluginTest extends PluginTestBase implements VariableReferenc
         final String dbSecret = "my-plugin-plugindb-secret";
         step("And a database schema was prepared for the Entando Plugin", () -> {
             final Pod mainDbPreprationJob = getClient().pods().loadPod(MY_NAMESPACE,
-                    Map.of("EntandoResourceKind", "EntandoPlugin", "jobKind", "db-preparation-job", "EntandoPlugin",
+                    Map.of(LabelNames.RESOURCE_KIND.getName(), "EntandoPlugin", LabelNames.JOB_KIND.getName(), "db-preparation-job",
+                            "EntandoPlugin",
                             MY_PLUGIN, LabelNames.DEPLOYMENT_QUALIFIER.getName(), NameUtils.MAIN_QUALIFIER));
             assertThat(mainDbPreprationJob).isNotNull();
             final Container initContainer = theInitContainerNamed("my-plugin-plugindb-schema-creation-job").on(mainDbPreprationJob);
@@ -159,9 +160,9 @@ class DeployEntandoPluginTest extends PluginTestBase implements VariableReferenc
                     () -> assertThat(service.getSpec().getPorts().get(0).getPort()).isEqualTo(8081));
             step("And with a label selector matching the labels of the Pod Template on the  Deployment",
                     () -> assertThat(service.getSpec().getSelector()).containsAllEntriesOf(
-                            Map.of("EntandoResourceKind", "EntandoPlugin", "EntandoPlugin",
+                            Map.of(LabelNames.RESOURCE_KIND.getName(), "EntandoPlugin", "EntandoPlugin",
                                     entandoPlugin.getMetadata().getName(),
-                                    "deployment", entandoPlugin.getMetadata().getName())
+                                    LabelNames.DEPLOYMENT.getName(), entandoPlugin.getMetadata().getName())
                     ));
         });
 
