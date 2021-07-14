@@ -23,6 +23,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import org.entando.kubernetes.controller.spi.common.EntandoOperatorConfigBase;
+import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
+import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfigProperty;
 import org.entando.kubernetes.controller.spi.common.NameUtils;
 import org.entando.kubernetes.controller.spi.container.ConfigurableResourceContainer;
 import org.entando.kubernetes.controller.spi.container.DatabaseSchemaConnectionInfo;
@@ -131,7 +134,15 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
         vars.add(new EnvVar("ENTANDO_PLUGIN_SECURITY_LEVEL",
                 entandoPlugin.getSpec().getSecurityLevel().orElse(PluginSecurityLevel.STRICT).name(), null));
         vars.add(new EnvVar("PLUGIN_SIDECAR_PORT", "8084", null));
+        propagateProperty(vars, EntandoOperatorSpiConfigProperty.ENTANDO_RESOURCE_KIND);
+        propagateProperty(vars, EntandoOperatorSpiConfigProperty.ENTANDO_RESOURCE_NAMESPACE);
+        propagateProperty(vars, EntandoOperatorSpiConfigProperty.ENTANDO_RESOURCE_NAME);
+        propagateProperty(vars, EntandoOperatorSpiConfigProperty.ENTANDO_CONTROLLER_POD_NAME);
         return vars;
+    }
+
+    private void propagateProperty(List<EnvVar> vars, EntandoOperatorSpiConfigProperty prop) {
+        EntandoOperatorConfigBase.lookupProperty(prop).ifPresent(s -> vars.add(new EnvVar(prop.name(), s, null)));
     }
 
     @Override
