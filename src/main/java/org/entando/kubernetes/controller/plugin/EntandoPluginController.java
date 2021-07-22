@@ -145,7 +145,7 @@ public class EntandoPluginController implements Runnable {
     private DbmsVendor determineDbmsForSso() {
         final DbmsVendor dbmsVendor = entandoPlugin.getSpec().getDbms().orElse(DbmsVendor.NONE);
         if (dbmsVendor == DbmsVendor.NONE) {
-            return null;
+            return DbmsVendor.EMBEDDED;
         }
         return dbmsVendor;
     }
