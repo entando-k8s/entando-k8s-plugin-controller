@@ -27,11 +27,13 @@ import org.entando.kubernetes.controller.spi.common.EntandoOperatorConfigBase;
 import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
 import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfigProperty;
 import org.entando.kubernetes.controller.spi.common.NameUtils;
+import org.entando.kubernetes.controller.spi.common.SecretUtils;
 import org.entando.kubernetes.controller.spi.container.ConfigurableResourceContainer;
 import org.entando.kubernetes.controller.spi.container.DatabaseSchemaConnectionInfo;
 import org.entando.kubernetes.controller.spi.container.DbAwareContainer;
 import org.entando.kubernetes.controller.spi.container.DeployableContainer;
 import org.entando.kubernetes.controller.spi.container.DockerImageInfo;
+import org.entando.kubernetes.controller.spi.container.KeycloakName;
 import org.entando.kubernetes.controller.spi.container.ParameterizableContainer;
 import org.entando.kubernetes.controller.spi.container.PersistentVolumeAwareContainer;
 import org.entando.kubernetes.controller.spi.container.SpringBootDeployableContainer;
@@ -139,6 +141,23 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
         propagateProperty(vars, EntandoOperatorSpiConfigProperty.ENTANDO_RESOURCE_NAME);
         propagateProperty(vars, EntandoOperatorSpiConfigProperty.ENTANDO_CONTROLLER_POD_NAME);
         return vars;
+    }
+
+    @Override
+    public List<EnvVar> getSsoVariables() {
+        List<EnvVar> vars = SpringBootDeployableContainer.super.getSsoVariables();
+        //TODO remove this once the plugins stop using it. Plugins should use the standard Spring variable
+        // SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI
+        vars.add(new EnvVar("KEYCLOAK_REALM", ssoClientConfig.getRealm(), null));
+        ofNullable(getSsoConnectionInfo()).ifPresent(ssoConnectionInfo ->
+                vars.add(new EnvVar("KEYCLOAK_AUTH_URL", ssoConnectionInfo.getExternalBaseUrl(), null)));
+        String keycloakSecretName = KeycloakName.forTheClientSecret(ssoClientConfig);
+        vars.add(new EnvVar("KEYCLOAK_CLIENT_SECRET", null,
+                SecretUtils.secretKeyRef(keycloakSecretName, KeycloakName.CLIENT_SECRET_KEY)));
+        vars.add(new EnvVar("KEYCLOAK_CLIENT_ID", null,
+                SecretUtils.secretKeyRef(keycloakSecretName, KeycloakName.CLIENT_ID_KEY)));
+        return vars;
+
     }
 
     private void propagateProperty(List<EnvVar> vars, EntandoOperatorSpiConfigProperty prop) {
