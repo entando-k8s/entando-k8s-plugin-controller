@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import org.entando.kubernetes.controller.spi.common.EntandoOperatorConfigBase;
-import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
 import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfigProperty;
 import org.entando.kubernetes.controller.spi.common.NameUtils;
 import org.entando.kubernetes.controller.spi.common.SecretUtils;
@@ -149,8 +148,8 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
         //TODO remove this once the plugins stop using it. Plugins should use the standard Spring variable
         // SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI
         vars.add(new EnvVar("KEYCLOAK_REALM", ssoClientConfig.getRealm(), null));
-        ofNullable(getSsoConnectionInfo()).ifPresent(ssoConnectionInfo ->
-                vars.add(new EnvVar("KEYCLOAK_AUTH_URL", ssoConnectionInfo.getExternalBaseUrl(), null)));
+        ofNullable(getSsoConnectionInfo()).ifPresent(sso ->
+                vars.add(new EnvVar("KEYCLOAK_AUTH_URL", sso.getExternalBaseUrl(), null)));
         String keycloakSecretName = KeycloakName.forTheClientSecret(ssoClientConfig);
         vars.add(new EnvVar("KEYCLOAK_CLIENT_SECRET", null,
                 SecretUtils.secretKeyRef(keycloakSecretName, KeycloakName.CLIENT_SECRET_KEY)));

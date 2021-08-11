@@ -85,14 +85,14 @@ public class EntandoPluginController implements Runnable {
     }
 
     private int calculateDbAwareTimeout() {
-        final long timeoutForDbAware;
+        final int timeoutForDbAware;
         if (requiresDbmsService(entandoPlugin.getSpec().getDbms().orElse(DbmsVendor.NONE))) {
             timeoutForDbAware =
                     EntandoOperatorSpiConfig.getPodCompletionTimeoutSeconds() + EntandoOperatorSpiConfig.getPodReadinessTimeoutSeconds();
         } else {
             timeoutForDbAware = EntandoOperatorSpiConfig.getPodReadinessTimeoutSeconds();
         }
-        return (int) timeoutForDbAware;
+        return timeoutForDbAware;
     }
 
     private ProvidedDatabaseCapability provideDatabaseIfRequired() throws TimeoutException {
