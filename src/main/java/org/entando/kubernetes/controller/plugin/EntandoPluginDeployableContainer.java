@@ -134,7 +134,6 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
         vars.add(new EnvVar("ENTANDO_CONNECTIONS_ROOT", DeployableContainer.ENTANDO_SECRET_MOUNTS_ROOT, null));
         vars.add(new EnvVar("ENTANDO_PLUGIN_SECURITY_LEVEL",
                 entandoPlugin.getSpec().getSecurityLevel().orElse(PluginSecurityLevel.STRICT).name(), null));
-        vars.add(new EnvVar("PLUGIN_SIDECAR_PORT", "8084", null));
         propagateProperty(vars, EntandoOperatorSpiConfigProperty.ENTANDO_RESOURCE_KIND);
         propagateProperty(vars, EntandoOperatorSpiConfigProperty.ENTANDO_RESOURCE_NAMESPACE);
         propagateProperty(vars, EntandoOperatorSpiConfigProperty.ENTANDO_RESOURCE_NAME);
