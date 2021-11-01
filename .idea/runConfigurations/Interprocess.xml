@@ -1,5 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Interprocess" type="JUnit" factoryName="JUnit">
+    <module name="entando-k8s-plugin-controller" />
     <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
     <option name="ALTERNATIVE_JRE_PATH" value="11" />
     <option name="PACKAGE_NAME" value="" />
@@ -11,6 +12,9 @@
     <option name="TEST_SEARCH_SCOPE">
       <value defaultName="wholeProject" />
     </option>
+    <envs>
+      <env name="ENTANDO_FORCE_EXTERNAL_ACCESS_TO_KEYCLOAK" value="true" />
+    </envs>
     <tag value="inter-process" />
     <method v="2">
       <option name="Make" enabled="true" />
