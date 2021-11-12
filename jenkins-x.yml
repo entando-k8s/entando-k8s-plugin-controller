@@ -43,7 +43,7 @@ pipelineConfig:
       promote:
         preSteps:
           - command: helm init --client only
-            image: ghcr.io/jenkins-x/builder-maven:2.1.155-778-patch3
+            image: docker.io/entando/entando-jx-maven-java11:0.0.0-SNAPSHOT-PR-3-4
             name: helm-init
         replace: true
         steps:
