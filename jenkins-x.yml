@@ -1,8 +1,6 @@
 buildPack: entando-maven-docker
 buildPackGitURL: https://github.com/entando-k8s/jenkins-x-kubernetes.git
 pipelineConfig:
-  agent:
-    image: docker.io/entando/entando-jx-maven-java11:0.0.0-SNAPSHOT-PR-3-4
   env:
     - name: BUILDER_JX_IMAGE
       value: ghcr.io/jenkins-x/builder-jx:2.1.155-778-patch3
