@@ -22,6 +22,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.Watcher.Action;
 import io.qameta.allure.Description;
@@ -34,7 +35,6 @@ import org.entando.kubernetes.controller.support.client.impl.integrationtesthelp
 import org.entando.kubernetes.controller.support.client.impl.integrationtesthelpers.HttpTestHelper;
 import org.entando.kubernetes.controller.support.client.impl.integrationtesthelpers.TestFixturePreparation;
 import org.entando.kubernetes.controller.support.common.EntandoOperatorConfig;
-import org.entando.kubernetes.model.capability.ProvidedCapability;
 import org.entando.kubernetes.model.common.DbmsVendor;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
@@ -45,28 +45,35 @@ import org.junit.jupiter.api.Tags;
 import org.junit.jupiter.api.Test;
 
 @Tags({@Tag("smoke"), @Tag("allure"), @Tag("post-deployment"), @Tag("inter-process")})
-@Feature("As an Entando Operator users, I want to use a Docker container to process an EntandoPlugin so that I don't need to "
-        + "know any of its implementation details to use it.")
+@Feature(
+        "As an Entando Operator users, I want to use a Docker container to process an EntandoPlugin so that I don't need to "
+                + "know any of its implementation details to use it.")
 class EntandoPluginSmokeTest implements FluentIntegrationTesting {
 
-    private static final String MY_NAMESPACE = EntandoOperatorTestConfig.calculateNameSpace("my-namespace");
-    public static final String MY_PLUGIN = EntandoOperatorTestConfig.calculateName("my-plugin");
+    private static final String TEST_NAMESPACE = EntandoOperatorTestConfig.calculateNameSpace("my-namespace");
+    public static final String TEST_PLUGIN_NAME = EntandoOperatorTestConfig.calculateName("my-plugin");
+
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
     private EntandoPlugin entandoPlugin;
 
     @Test
     @Description("Should successfully connect to newly deployed Entando Plugin")
     void testDeployment() {
-        final String ingressHostName = MY_PLUGIN + "-" + MY_NAMESPACE + "." + EntandoOperatorConfig.getDefaultRoutingSuffix()
-                .orElse("apps.serv.run");
+        final String testHostnameSuffix = EntandoOperatorConfig.getDefaultRoutingSuffix()
+                .orElseThrow(() -> new IllegalStateException("please provide ENTANDO_DEFAULT_ROUTING_SUFFIX"));
+        final String testImageVersion = EntandoOperatorTestConfig.getVersionOfImageUnderTest()
+                .orElseThrow(() -> new IllegalStateException("please provide ENTANDO_TEST_IMAGE_VERSION"));
+
+        final String ingressHostName = TEST_PLUGIN_NAME + "-" + TEST_NAMESPACE + "." + testHostnameSuffix;
         final KubernetesClient client = new SupportProducer().getKubernetesClient();
         final DefaultSimpleK8SClient simpleClient = new DefaultSimpleK8SClient(client);
         step("Given I have a clean namespace", () -> {
-            TestFixturePreparation.prepareTestFixture(client, deleteAll(EntandoPlugin.class).fromNamespace(MY_NAMESPACE));
+            TestFixturePreparation.prepareTestFixture(client,
+                    deleteAll(EntandoPlugin.class).fromNamespace(TEST_NAMESPACE));
         });
         step("And I have configured a ProvidedCapability for SSO in the namespace", () -> {
-            final ProvidedCapability providedCapability = new KeycloakTestCapabilityProvider(simpleClient, MY_NAMESPACE)
-                    .provideKeycloakCapability();
+            final var providedCapability =
+                    new KeycloakTestCapabilityProvider(simpleClient, TEST_NAMESPACE).provideKeycloakCapability();
             attachment("SSO Capability", objectMapper.writeValueAsString(providedCapability));
         });
         step("And I have created an EntandoPlugin custom resource with an Embedded DBMS", () -> {
@@ -74,8 +81,8 @@ class EntandoPluginSmokeTest implements FluentIntegrationTesting {
                     .createOrPatchEntandoResource(
                             new EntandoPluginBuilder()
                                     .withNewMetadata()
-                                    .withNamespace(MY_NAMESPACE)
-                                    .withName(MY_PLUGIN)
+                                    .withNamespace(TEST_NAMESPACE)
+                                    .withName(TEST_PLUGIN_NAME)
                                     .endMetadata()
                                     .withNewSpec()
                                     .withIngressHostName(ingressHostName)
@@ -89,10 +96,10 @@ class EntandoPluginSmokeTest implements FluentIntegrationTesting {
             attachment("Entando Plugin", objectMapper.writeValueAsString(this.entandoPlugin));
         });
         step("When I run the entando-k8s-plugin-controller container against the EntandoPlugin", () -> {
-            ControllerExecutor executor = new ControllerExecutor(MY_NAMESPACE, simpleClient,
+            ControllerExecutor executor = new ControllerExecutor(TEST_NAMESPACE, simpleClient,
                     r -> "entando-k8s-plugin-controller");
-            executor.runControllerFor(Action.ADDED, entandoPlugin,
-                    EntandoOperatorTestConfig.getVersionOfImageUnderTest().orElse("0.0.0-SNAPSHOT-PR-27-5"));
+
+            executor.runControllerFor(Action.ADDED, entandoPlugin, testImageVersion);
         });
 
         step("Then I can successfully access the Plugin's health URL", () -> {
