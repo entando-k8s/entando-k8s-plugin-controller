@@ -1,9 +1,4 @@
-allure-results
 .idea/*
-!.idea/runConfigurations
-!.idea/copyright
-!.idea/codeStyles
-!.idea/sonarlint.xml
 target/
 *.iml
 .classpath
@@ -11,3 +6,5 @@ target/
 .settings/
 classes/
 /src/test/resources/crd/examples/
+allure-results
+.allure
