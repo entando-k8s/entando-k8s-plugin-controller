@@ -44,9 +44,8 @@ abstract class PluginTestBase implements FluentTraversals, ControllerTestHelper 
 
     //NB!! if the builder pod has the ENTANDO_DEFAULT_ROUTING_SUFFIX set, the systemproperty doesn't make a difference.
     public static final String THE_ROUTING_SUFFIX = ofNullable(
-            System.getenv(EntandoOperatorConfigProperty.ENTANDO_DEFAULT_ROUTING_SUFFIX.name())).orElse("entando.org");
-
-    public static final String DEFAULT_SSO_IN_NAMESPACE = "default-sso-in-namespace";
+            System.getenv(EntandoOperatorConfigProperty.ENTANDO_DEFAULT_ROUTING_SUFFIX.name())).filter(
+                (v) -> !v.isEmpty()).orElse("entando.org");
 
     protected final SimpleK8SClientDouble client = new SimpleK8SClientDouble();
     private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(5);

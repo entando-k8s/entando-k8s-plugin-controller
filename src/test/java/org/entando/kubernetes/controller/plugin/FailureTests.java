@@ -166,16 +166,19 @@ class FailureTests extends PluginTestBase {
         });
         step("And the 'main' ServerStatus carries the actual failure", () -> {
             assertThat(
-                    entandoPlugin.getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).get().getEntandoControllerFailure()
+                    entandoPlugin.getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).get()
+                            .getEntandoControllerFailure()
                             .get().getDetailMessage())
-                    .contains(" Could not prepare database for EntandoPlugin my-namespace/my-plugin");
+                    .contains(" Could not prepare database for EntandoPlugin " + MY_NAMESPACE + "/my-plugin");
             attachKubernetesResource("Failed EntandoPlugin", entandoPlugin);
         });
         step("And this exception was logged as SEVERE", () -> {
             assertThat(LogInterceptor.getLogRecords())
-                    .anyMatch(r -> r.getMessage().contains(" Could not prepare database for EntandoPlugin my-namespace/my-plugin"));
+                    .anyMatch(r -> r.getMessage()
+                            .contains(" Could not prepare database for EntandoPlugin " + MY_NAMESPACE + "/my-plugin"));
             final LogRecord logRecord = LogInterceptor.getLogRecords().stream()
-                    .filter(r -> r.getMessage().contains(" Could not prepare database for EntandoPlugin my-namespace/my-plugin"))
+                    .filter(r -> r.getMessage()
+                            .contains(" Could not prepare database for EntandoPlugin " + MY_NAMESPACE + "/my-plugin"))
                     .findFirst()
                     .get();
             assertThat(logRecord.getLevel()).isEqualTo(Level.SEVERE);
@@ -216,16 +219,20 @@ class FailureTests extends PluginTestBase {
         });
         step("And the 'main' ServerStatus carries the actual failure", () -> {
             assertThat(
-                    entandoPlugin.getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).get().getEntandoControllerFailure()
+                    entandoPlugin.getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).get()
+                            .getEntandoControllerFailure()
                             .get().getDetailMessage())
-                    .contains("Could not prepare SSO for EntandoPlugin my-namespace/my-plugin");
+                    .contains("Could not prepare SSO for EntandoPlugin " + MY_NAMESPACE + "/my-plugin");
             attachKubernetesResource("Failed EntandoPlugin", entandoPlugin);
         });
         step("And this exception was logged as SEVERE", () -> {
             assertThat(LogInterceptor.getLogRecords())
-                    .anyMatch(r -> r.getMessage().contains("Could not prepare SSO for EntandoPlugin my-namespace/my-plugin"));
+                    .anyMatch(r -> r.getMessage()
+                            .contains("Could not prepare SSO for EntandoPlugin " + MY_NAMESPACE + "/my-plugin"));
             final LogRecord logRecord = LogInterceptor.getLogRecords().stream()
-                    .filter(r -> r.getMessage().contains("Could not prepare SSO for EntandoPlugin my-namespace/my-plugin")).findFirst()
+                    .filter(r -> r.getMessage()
+                            .contains("Could not prepare SSO for EntandoPlugin " + MY_NAMESPACE + "/my-plugin"))
+                    .findFirst()
                     .get();
             assertThat(logRecord.getLevel()).isEqualTo(Level.SEVERE);
             assertThat(logRecord.getThrown()).isInstanceOf(EntandoControllerException.class);
