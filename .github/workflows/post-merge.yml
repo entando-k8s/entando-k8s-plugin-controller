@@ -8,7 +8,9 @@ on:
       - release/*
 
 env:
-  ENTANDO_OPT_USE_PPL_TAG: "v1.2.0"
+  ENTANDO_OPT_USE_PPL_TAG: "v1.3.0"
+  ENTANDO_OPT_ENVIRONMENTS: "${{ secrets.ENTANDO_OPT_ENVIRONMENTS }}"
+  ENTANDO_OPT_ENVIRONMENT_NAMES: "${{ secrets.ENTANDO_OPT_ENVIRONMENT_NAMES }}"
   ENTANDO_OPT_FEATURES: "${{ secrets.ENTANDO_OPT_FEATURES }}"
   ENTANDO_OPT_GLOBAL_FEATURES: "${{ secrets.ENTANDO_OPT_GLOBAL_FEATURES }}"
   ENTANDO_OPT_LOG_LEVEL: "${{ secrets.ENTANDO_OPT_LOG_LEVEL }}"
@@ -23,14 +25,13 @@ jobs:
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # SNAPSHOT TAG
-  
+
   add-version-tag:
     runs-on: ubuntu-latest
     steps:
       - name: "ADD SNAPSHOT TAG"
         run: |
           ${{ secrets.ENTANDO_OPT_PPL_INSTALL_CMD }}
-
           ~/ppl-run pr-status-report \
           .. checkout-branch base \
                 --id "CHECKOUT-BASE" \
