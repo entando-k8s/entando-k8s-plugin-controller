@@ -43,8 +43,13 @@ abstract class PluginTestBase implements FluentTraversals, ControllerTestHelper 
     public static final String MY_PLUGIN = "my-plugin";
 
     //NB!! if the builder pod has the ENTANDO_DEFAULT_ROUTING_SUFFIX set, the systemproperty doesn't make a difference.
-    public static final String THE_ROUTING_SUFFIX = ofNullable(
-            System.getenv(EntandoOperatorConfigProperty.ENTANDO_DEFAULT_ROUTING_SUFFIX.name())).orElse("entando.org");
+    public static final String THE_ROUTING_SUFFIX;
+
+    static {
+        String tmp = ofNullable(
+                System.getenv(EntandoOperatorConfigProperty.ENTANDO_DEFAULT_ROUTING_SUFFIX.name())).orElse("");
+        THE_ROUTING_SUFFIX = tmp.equals("") ? "entando.org" : tmp;
+    }
 
     public static final String DEFAULT_SSO_IN_NAMESPACE = "default-sso-in-namespace";
 
