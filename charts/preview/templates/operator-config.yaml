@@ -1,0 +1,44 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: entando-operator-config
+  namespace: test-entando-k8s-plugin-controller
+  uid: a5163510-f97c-4e34-9dfe-5c66d8ca7ca4
+  resourceVersion: '30934193'
+  creationTimestamp: '2022-02-08T09:30:22Z'
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: >
+      {"apiVersion":"v1","data":{"entando.ca.secret.name":"test-keycloak-server-ca-cert","entando.timeout.adjustment.ratio":"2"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"entando-operator-config","namespace":"test-entando-k8s-plugin-controller"}}
+  managedFields:
+    - manager: oc
+      operation: Update
+      apiVersion: v1
+      time: '2022-02-08T09:30:22Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:data':
+          .: {}
+          'f:entando.ca.secret.name': {}
+          'f:entando.timeout.adjustment.ratio': {}
+        'f:metadata':
+          'f:annotations':
+            .: {}
+            'f:kubectl.kubernetes.io/last-applied-configuration': {}
+    - manager: Mozilla
+      operation: Update
+      apiVersion: v1
+      time: '2022-02-08T20:54:29Z'
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:data':
+          'f:entando.plugin.defaultProfile': {}
+          'f:entando.profile.mid': {}
+data:
+  entando.ca.secret.name: test-keycloak-server-ca-cert
+  entando.plugin.defaultProfile: mid
+  entando.profile.mid: |-
+    resources.limits.cpu: "1000"
+    resources.limits.memory: "2000"
+    resources.requests.cpu: "500"
+    resources.requests.memory: "500"
+  entando.timeout.adjustment.ratio: '2'

@@ -17,13 +17,17 @@
 package org.entando.kubernetes.controller.plugin;
 
 import static java.util.Optional.ofNullable;
+import static org.entando.kubernetes.controller.spi.common.EntandoOperatorConfigBase.lookupProperty;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.fabric8.kubernetes.api.model.EnvVar;
+import io.fabric8.kubernetes.client.utils.Serialization;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import org.entando.kubernetes.controller.spi.common.EntandoOperatorConfigBase;
 import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfigProperty;
 import org.entando.kubernetes.controller.spi.common.NameUtils;
 import org.entando.kubernetes.controller.spi.common.SecretUtils;
@@ -57,6 +61,11 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
     private final List<DatabaseSchemaConnectionInfo> databaseSchemaConnectionInfo;
     private final SsoClientConfig ssoClientConfig;
 
+    /**
+     * The configuration profile containing the customizations for the bundle deployment.
+     */
+    private HashMap<String, String> configurationProfile = null;
+
     public EntandoPluginDeployableContainer(EntandoPlugin entandoPlugin, SsoConnectionInfo ssoConnectionInfo,
             DatabaseConnectionInfo databaseConnectionInfo, SsoClientConfig ssoClientConfig) {
         this.entandoPlugin = entandoPlugin;
@@ -64,7 +73,8 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
         this.ssoClientConfig = ssoClientConfig;
         this.databaseSchemaConnectionInfo = ofNullable(databaseConnectionInfo)
                 .map(databaseServiceResult1 -> DbAwareContainer
-                        .buildDatabaseSchemaConnectionInfo(entandoPlugin, databaseConnectionInfo, Collections.singletonList(PLUGINDB)))
+                        .buildDatabaseSchemaConnectionInfo(entandoPlugin, databaseConnectionInfo,
+                                Collections.singletonList(PLUGINDB)))
                 .orElse(Collections.emptyList());
 
     }
@@ -82,12 +92,12 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
 
     @Override
     public int getCpuLimitMillicores() {
-        return 1000;
+        return (int) getConfigProfileNumber("resources.limits.memory", 1000);
     }
 
     @Override
     public int getMemoryLimitMebibytes() {
-        return 1024;
+        return (int) getConfigProfileNumber("resources.limits.memory", 1024);
     }
 
     @Override
@@ -127,8 +137,13 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
 
     @Override
     public List<EnvVar> getEnvironmentVariables() {
+        var defaultProfile = lookupProperty("entando.plugin.defaultProfile").orElse("default");
+
+        loadConfigurationProfile(defaultProfile);
+
         List<EnvVar> vars = new ArrayList<>();
         vars.add(new EnvVar("PORT", "8081", null));
+        vars.add(new EnvVar("CONFIGURATION_PROFILE", "default", null));
         vars.add(new EnvVar("SPRING_PROFILES_ACTIVE", "default,prod", null));
         vars.add(new EnvVar("ENTANDO_WIDGETS_FOLDER", "/app/resources/widgets", null));
         vars.add(new EnvVar("ENTANDO_CONNECTIONS_ROOT", DeployableContainer.ENTANDO_SECRET_MOUNTS_ROOT, null));
@@ -140,6 +155,28 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
         propagateProperty(vars, EntandoOperatorSpiConfigProperty.ENTANDO_RESOURCE_NAME);
         propagateProperty(vars, EntandoOperatorSpiConfigProperty.ENTANDO_CONTROLLER_POD_NAME);
         return vars;
+    }
+
+    private void loadConfigurationProfile(String defaultProfile) {
+        configurationProfile = new HashMap<>();
+        var profileName = lookupProperty("CONFIGURATION_PROFILE").orElse(defaultProfile);
+        lookupProperty("entando.profile." + profileName).ifPresent(cfg -> {
+            try {
+                TypeReference<HashMap<String, String>> typeRef = new TypeReference<>() {};
+                configurationProfile = Serialization.yamlMapper().readValue(cfg, typeRef);
+            } catch (JsonProcessingException ignored) {
+                // assumes default
+            }
+        });
+    }
+
+    private String getConfigProfileString(String key, String fallback) {
+        return (configurationProfile == null) ? fallback : configurationProfile.getOrDefault(key, fallback);
+    }
+
+    private double getConfigProfileNumber(String key, double fallback) {
+        return (configurationProfile == null) ? fallback :
+                Double.parseDouble(configurationProfile.getOrDefault(key, String.format("%f", fallback)));
     }
 
     @Override
@@ -160,7 +197,7 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
     }
 
     private void propagateProperty(List<EnvVar> vars, EntandoOperatorSpiConfigProperty prop) {
-        EntandoOperatorConfigBase.lookupProperty(prop).ifPresent(s -> vars.add(new EnvVar(prop.name(), s, null)));
+        lookupProperty(prop).ifPresent(s -> vars.add(new EnvVar(prop.name(), s, null)));
     }
 
     @Override
