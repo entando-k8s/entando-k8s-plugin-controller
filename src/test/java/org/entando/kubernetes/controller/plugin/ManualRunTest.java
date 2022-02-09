@@ -1,5 +1,6 @@
 package org.entando.kubernetes.controller.plugin;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfigProperty.ENTANDO_CONTROLLER_POD_NAME;
 import static org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfigProperty.ENTANDO_RESOURCE_KIND;
 import static org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfigProperty.ENTANDO_RESOURCE_NAME;
@@ -27,6 +28,7 @@ import org.entando.kubernetes.controller.support.command.InProcessCommandStream;
 import org.entando.kubernetes.controller.support.common.EntandoOperatorConfig;
 import org.entando.kubernetes.model.common.DbmsVendor;
 import org.entando.kubernetes.model.common.EntandoCustomResource;
+import org.entando.kubernetes.model.common.EntandoDeploymentPhase;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Tags;
@@ -56,6 +58,7 @@ class ManualRunTest implements FluentIntegrationTesting {
         new DefaultKubernetesClientForControllers(client).prepareConfig();
         var simpleClient = new DefaultSimpleK8SClient(client);
         EntandoCustomResource entandoPlugin = buildAndApplyEntandyPluginCR(simpleClient);
+        assertThat(entandoPlugin.getMetadata().getName()).isNotNull();
         createTrustStoreSecret(client);
         runControllerAgainstCustomResource(entandoPlugin, simpleClient);
     }

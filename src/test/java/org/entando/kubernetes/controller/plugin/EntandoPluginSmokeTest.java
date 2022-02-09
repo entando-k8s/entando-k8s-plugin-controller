@@ -57,7 +57,7 @@ import org.junit.jupiter.api.Test;
 class EntandoPluginSmokeTest implements FluentIntegrationTesting {
 
     private static final String TEST_NAMESPACE = EntandoOperatorTestConfig.calculateNameSpace("my-namespace");
-    public static final String TEST_PLUGIN_NAME = EntandoOperatorTestConfig.calculateName("my-plugin");
+    public static final String TEST_PLUGIN_NAME = EntandoOperatorTestConfig.calculateName("my-test-plugin");
 
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
     private EntandoPlugin entandoPlugin;
