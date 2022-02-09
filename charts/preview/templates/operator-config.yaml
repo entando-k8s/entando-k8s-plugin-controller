@@ -1,0 +1,7 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: entando-operator-config
+data:
+  entando.ca.secret.name: test-keycloak-server-ca-cert
+  entando.timeout.adjustment.ratio: '2'
