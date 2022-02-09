@@ -17,13 +17,13 @@
 package org.entando.kubernetes.controller.plugin;
 
 import static java.util.Optional.ofNullable;
+import static org.entando.kubernetes.controller.spi.common.EntandoOperatorConfigBase.lookupProperty;
 
 import io.fabric8.kubernetes.api.model.EnvVar;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import org.entando.kubernetes.controller.spi.common.EntandoOperatorConfigBase;
 import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfigProperty;
 import org.entando.kubernetes.controller.spi.common.NameUtils;
 import org.entando.kubernetes.controller.spi.common.SecretUtils;
@@ -57,6 +57,11 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
     private final List<DatabaseSchemaConnectionInfo> databaseSchemaConnectionInfo;
     private final SsoClientConfig ssoClientConfig;
 
+    /**
+     * The configuration profile containing the customizations for the bundle deployment.
+     */
+    private final DeploymentConfigurationProfile deploymentConfigurationProfile = new DeploymentConfigurationProfile();
+
     public EntandoPluginDeployableContainer(EntandoPlugin entandoPlugin, SsoConnectionInfo ssoConnectionInfo,
             DatabaseConnectionInfo databaseConnectionInfo, SsoClientConfig ssoClientConfig) {
         this.entandoPlugin = entandoPlugin;
@@ -64,7 +69,8 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
         this.ssoClientConfig = ssoClientConfig;
         this.databaseSchemaConnectionInfo = ofNullable(databaseConnectionInfo)
                 .map(databaseServiceResult1 -> DbAwareContainer
-                        .buildDatabaseSchemaConnectionInfo(entandoPlugin, databaseConnectionInfo, Collections.singletonList(PLUGINDB)))
+                        .buildDatabaseSchemaConnectionInfo(entandoPlugin, databaseConnectionInfo,
+                                Collections.singletonList(PLUGINDB)))
                 .orElse(Collections.emptyList());
 
     }
@@ -82,12 +88,12 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
 
     @Override
     public int getCpuLimitMillicores() {
-        return 1000;
+        return (int) getConfigProfileNumber("resources.limits.memory", 1000);
     }
 
     @Override
     public int getMemoryLimitMebibytes() {
-        return 1024;
+        return (int) getConfigProfileNumber("resources.limits.memory", 1024);
     }
 
     @Override
@@ -127,6 +133,8 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
 
     @Override
     public List<EnvVar> getEnvironmentVariables() {
+        deploymentConfigurationProfile.loadForPlugin(entandoPlugin.getMetadata().getName());
+
         List<EnvVar> vars = new ArrayList<>();
         vars.add(new EnvVar("PORT", "8081", null));
         vars.add(new EnvVar("SPRING_PROFILES_ACTIVE", "default,prod", null));
@@ -140,6 +148,16 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
         propagateProperty(vars, EntandoOperatorSpiConfigProperty.ENTANDO_RESOURCE_NAME);
         propagateProperty(vars, EntandoOperatorSpiConfigProperty.ENTANDO_CONTROLLER_POD_NAME);
         return vars;
+    }
+
+    private String getConfigProfileString(String key, String fallback) {
+        return (deploymentConfigurationProfile == null) ? fallback
+                : deploymentConfigurationProfile.getString(key, fallback);
+    }
+
+    private double getConfigProfileNumber(String key, double fallback) {
+        return (deploymentConfigurationProfile == null) ? fallback
+                : deploymentConfigurationProfile.getNumber(key, fallback);
     }
 
     @Override
@@ -160,7 +178,7 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
     }
 
     private void propagateProperty(List<EnvVar> vars, EntandoOperatorSpiConfigProperty prop) {
-        EntandoOperatorConfigBase.lookupProperty(prop).ifPresent(s -> vars.add(new EnvVar(prop.name(), s, null)));
+        lookupProperty(prop).ifPresent(s -> vars.add(new EnvVar(prop.name(), s, null)));
     }
 
     @Override
