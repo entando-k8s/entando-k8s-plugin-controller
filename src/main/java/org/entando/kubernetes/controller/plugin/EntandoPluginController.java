@@ -18,6 +18,8 @@ package org.entando.kubernetes.controller.plugin;
 
 import static java.lang.String.format;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import io.fabric8.kubernetes.client.internal.SerializationUtils;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
@@ -40,6 +42,7 @@ import org.entando.kubernetes.model.capability.CapabilityScope;
 import org.entando.kubernetes.model.capability.StandardCapability;
 import org.entando.kubernetes.model.capability.StandardCapabilityImplementation;
 import org.entando.kubernetes.model.common.DbmsVendor;
+import org.entando.kubernetes.model.common.EntandoControllerFailure;
 import org.entando.kubernetes.model.common.ServerStatus;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import picocli.CommandLine;
@@ -64,31 +67,86 @@ public class EntandoPluginController implements Runnable {
     @Override
     public void run() {
         this.entandoPlugin = (EntandoPlugin) k8sClient.resolveCustomResourceToProcess(Collections.singletonList(EntandoPlugin.class));
+        EntandoPluginServerDeployable deployable;
         try {
             this.entandoPlugin = k8sClient.deploymentStarted(entandoPlugin);
             final DatabaseConnectionInfo dbConnectionInfo = provideDatabaseIfRequired();
             final SsoConnectionInfo ssoConnectionInfo = provideSso();
-            final EntandoPluginServerDeployable deployable = new EntandoPluginServerDeployable(dbConnectionInfo,
+            deployable = new EntandoPluginServerDeployable(dbConnectionInfo,
                     ssoConnectionInfo, entandoPlugin);
             this.deploymentProcessor.processDeployable(deployable, calculateDbAwareTimeout());
             this.entandoPlugin = k8sClient.deploymentEnded(entandoPlugin);
         } catch (Exception e) {
-            entandoPlugin = k8sClient.deploymentFailed(entandoPlugin, e, NameUtils.MAIN_QUALIFIER);
-            LOGGER.log(Level.SEVERE, e, () -> format("EntandoPluginController failed:%n%s",
-                    entandoPlugin.getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).flatMap(ServerStatus::getEntandoControllerFailure)
-                            .orElseThrow(IllegalStateException::new)
-                            .getDetailMessage()));
+            try {
+                entandoPlugin = k8sClient.deploymentFailed(entandoPlugin, e, NameUtils.MAIN_QUALIFIER);
+                LOGGER.log(Level.SEVERE, e, () -> format("EntandoPluginController failed:%n%s",
+                        entandoPlugin.getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER)
+                                .flatMap(ServerStatus::getEntandoControllerFailure)
+                                .orElseThrow(IllegalStateException::new)
+                                .getDetailMessage()));
+            } catch (Exception ignored) {
+                LOGGER.log(Level.SEVERE, e, () -> "EntandoPluginController failed: <<UNABLE TO EXTRACT THE STATE>>");
+            }
         }
-        entandoPlugin.getStatus().findFailedServerStatus().flatMap(ServerStatus::getEntandoControllerFailure).ifPresent(s -> {
-            throw new CommandLine.ExecutionException(new CommandLine(this), s.getDetailMessage());
+        var failedServerStatus = entandoPlugin.getStatus().findFailedServerStatus();
+        failedServerStatus.flatMap(ServerStatus::getEntandoControllerFailure).ifPresent(s -> {
+            printFailureReport(s);
+            cleanupFailedPluginInstallation(failedServerStatus.get());
+            throw new CommandLine.ExecutionException(new CommandLine(this),
+                    "Error starting the plugin pod");
         });
+    }
+
+    private void cleanupFailedPluginInstallation(ServerStatus failedServerStatus) {
+        var dpn = failedServerStatus.getDeploymentName().orElse("");
+        if (dpn.length() == 0) {
+            throw new CommandLine.ExecutionException(new CommandLine(this),
+                    "Unable to extract from the custom resource the status of the failed server (C1)");
+        }
+        var ns = entandoPlugin.getMetadata().getNamespace();
+        k8sClient.getDeploymentByName(dpn, ns).scale(0);
+    }
+
+    static final String STDOUT_SEPARATOR;
+
+    static {
+        var tmp = "##########";
+        STDOUT_SEPARATOR = tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp;
+    }
+
+    private void printFailureReport(EntandoControllerFailure s) {
+        try {
+            final var name = s.getFailedObjectName();
+            final var ns = s.getFailedObjectNamespace();
+            directPrint("");
+            directPrint(STDOUT_SEPARATOR);
+            directPrint("### ERROR STARTING THE PLUGIN POD");
+            directPrint("### the plugin pod \"" + ns + "/" + name + "\" failed to start");
+            var failedPod = k8sClient.getPodByName(name, ns);
+            directPrint("### This is its log:");
+            directPrint("");
+            directPrint(SerializationUtils.getMapper().writeValueAsString(failedPod.getLog()));
+            directPrint("");
+            directPrint(STDOUT_SEPARATOR);
+            directPrint(STDOUT_SEPARATOR);
+            directPrint("");
+        } catch (JsonProcessingException e) {
+            directPrint("<<Unable to convert the failed pod data to yaml>>");
+        } catch (Exception t) {
+            directPrint("<<Unable to extract the failed pod log>>");
+        }
+    }
+
+    private static void directPrint(String str) {
+        System.err.println(str); //NOSONAR
     }
 
     private int calculateDbAwareTimeout() {
         final int timeoutForDbAware;
         if (requiresDbmsService(entandoPlugin.getSpec().getDbms().orElse(DbmsVendor.NONE))) {
             timeoutForDbAware =
-                    EntandoOperatorSpiConfig.getPodCompletionTimeoutSeconds() + EntandoOperatorSpiConfig.getPodReadinessTimeoutSeconds();
+                    EntandoOperatorSpiConfig.getPodCompletionTimeoutSeconds()
+                            + EntandoOperatorSpiConfig.getPodReadinessTimeoutSeconds();
         } else {
             timeoutForDbAware = EntandoOperatorSpiConfig.getPodReadinessTimeoutSeconds();
         }
