@@ -111,7 +111,10 @@ public class EntandoPluginController implements Runnable {
 
     static {
         var tmp = "##########";
-        STDOUT_SEPARATOR = tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp;
+        STDOUT_SEPARATOR = "\033[41m\033[1;97m"
+                + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp
+                + "\033[0;39m"
+        ;
     }
 
     private void printFailureReport(EntandoControllerFailure s) {
@@ -120,20 +123,23 @@ public class EntandoPluginController implements Runnable {
             final var ns = s.getFailedObjectNamespace();
             directPrint("");
             directPrint(STDOUT_SEPARATOR);
+            directPrint(STDOUT_SEPARATOR);
+            directPrint(STDOUT_SEPARATOR);
             directPrint("### ERROR STARTING THE PLUGIN POD");
             directPrint("### the plugin pod \"" + ns + "/" + name + "\" failed to start");
-            var failedPod = k8sClient.getPodByName(name, ns);
+            directPrint("");
             directPrint("### This is its log:");
             directPrint("");
-            directPrint(SerializationUtils.getMapper().writeValueAsString(failedPod.getLog()));
+            var failedPod = k8sClient.getPodByName(name, ns);
+            directPrint(failedPod.tailingLines(300).getLog());
             directPrint("");
             directPrint(STDOUT_SEPARATOR);
             directPrint(STDOUT_SEPARATOR);
+            directPrint(STDOUT_SEPARATOR);
             directPrint("");
-        } catch (JsonProcessingException e) {
-            directPrint("<<Unable to convert the failed pod data to yaml>>");
-        } catch (Exception t) {
+        } catch (Exception e) {
             directPrint("<<Unable to extract the failed pod log>>");
+            e.printStackTrace(); //NOSONAR
         }
     }
 
