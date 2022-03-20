@@ -39,19 +39,27 @@ public class EntandoPluginServerDeployable implements IngressingDeployableBase<E
         DbAwareDeployable<EntandoPluginDeploymentResult>,
         SsoAwareDeployable<EntandoPluginDeploymentResult> {
 
+    public static final String PLUGINDB = "plugindb";
     public static final String ENTANDO_APP_ROLE = "entandoApp";
     public static final long DEFAULT_USER_ID = 185L;
     private final EntandoPlugin entandoPlugin;
     private final List<DeployableContainer> containers;
     private final SsoConnectionInfo ssoConnectionInfo;
 
-    public EntandoPluginServerDeployable(DatabaseConnectionInfo databaseConnectionInfo,
-            SsoConnectionInfo ssoConnectionInfo, EntandoPlugin entandoPlugin) {
+    public EntandoPluginServerDeployable(
+            DatabaseConnectionInfo databaseConnectionInfo,
+            SsoConnectionInfo ssoConnectionInfo,
+            EntandoPlugin entandoPlugin,
+            String pluginDbmsSecretName,
+            String schemaNameOverride) {
+        //~
         this.entandoPlugin = entandoPlugin;
         this.containers = new ArrayList<>();
         this.ssoConnectionInfo = ssoConnectionInfo;
-        this.containers
-                .add(new EntandoPluginDeployableContainer(entandoPlugin, ssoConnectionInfo, databaseConnectionInfo, getSsoClientConfig()));
+        this.containers.add(new EntandoPluginDeployableContainer(
+                entandoPlugin, pluginDbmsSecretName, ssoConnectionInfo,
+                databaseConnectionInfo, getSsoClientConfig(), schemaNameOverride
+        ));
     }
 
     @Override
@@ -119,7 +127,8 @@ public class EntandoPluginServerDeployable implements IngressingDeployableBase<E
     }
 
     @Override
-    public EntandoPluginDeploymentResult createResult(Deployment deployment, Service service, Ingress ingress, Pod pod) {
+    public EntandoPluginDeploymentResult createResult(Deployment deployment, Service service, Ingress ingress,
+            Pod pod) {
         return new EntandoPluginDeploymentResult(pod, service, ingress);
     }
 
@@ -128,4 +137,7 @@ public class EntandoPluginServerDeployable implements IngressingDeployableBase<E
         return entandoPlugin.getSpec().getServiceAccountToUse().orElse(getDefaultServiceAccountName());
     }
 
+    public static String mkPlugingSecretName(EntandoPlugin entandoPlugin) {
+        return entandoPlugin.getMetadata().getName() + "-" + PLUGINDB + "-secret";
+    }
 }

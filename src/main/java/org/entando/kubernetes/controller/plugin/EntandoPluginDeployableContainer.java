@@ -24,12 +24,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import org.entando.kubernetes.controller.spi.common.DbmsVendorConfig;
 import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfigProperty;
 import org.entando.kubernetes.controller.spi.common.NameUtils;
 import org.entando.kubernetes.controller.spi.common.SecretUtils;
 import org.entando.kubernetes.controller.spi.container.ConfigurableResourceContainer;
 import org.entando.kubernetes.controller.spi.container.DatabaseSchemaConnectionInfo;
-import org.entando.kubernetes.controller.spi.container.DbAwareContainer;
+import org.entando.kubernetes.controller.spi.container.DefaultDatabaseSchemaConnectionInfo;
 import org.entando.kubernetes.controller.spi.container.DeployableContainer;
 import org.entando.kubernetes.controller.spi.container.DockerImageInfo;
 import org.entando.kubernetes.controller.spi.container.KeycloakName;
@@ -41,6 +42,7 @@ import org.entando.kubernetes.controller.spi.deployable.SsoClientConfig;
 import org.entando.kubernetes.controller.spi.deployable.SsoConnectionInfo;
 import org.entando.kubernetes.controller.spi.result.DatabaseConnectionInfo;
 import org.entando.kubernetes.model.common.DbmsVendor;
+import org.entando.kubernetes.model.common.EntandoCustomResource;
 import org.entando.kubernetes.model.common.EntandoResourceRequirements;
 import org.entando.kubernetes.model.common.KeycloakAwareSpec;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
@@ -51,7 +53,6 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
         ParameterizableContainer,
         ConfigurableResourceContainer, SsoAwareContainer {
 
-    public static final String PLUGINDB = "plugindb";
     private final EntandoPlugin entandoPlugin;
     private final SsoConnectionInfo ssoConnectionInfo;
     private final List<DatabaseSchemaConnectionInfo> databaseSchemaConnectionInfo;
@@ -62,18 +63,68 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
      */
     private final EntandoConfigurationProfile configurationProfile = new EntandoConfigurationProfile();
 
-    public EntandoPluginDeployableContainer(EntandoPlugin entandoPlugin, SsoConnectionInfo ssoConnectionInfo,
-            DatabaseConnectionInfo databaseConnectionInfo, SsoClientConfig ssoClientConfig) {
+    public EntandoPluginDeployableContainer(EntandoPlugin entandoPlugin, String pluginDbmsSecretName,
+            SsoConnectionInfo ssoConnectionInfo, DatabaseConnectionInfo databaseConnectionInfo,
+            SsoClientConfig ssoClientConfig, String schemaNameOverride) {
         this.entandoPlugin = entandoPlugin;
         this.ssoConnectionInfo = ssoConnectionInfo;
         this.ssoClientConfig = ssoClientConfig;
         this.databaseSchemaConnectionInfo = ofNullable(databaseConnectionInfo)
-                .map(databaseServiceResult1 -> DbAwareContainer
-                        .buildDatabaseSchemaConnectionInfo(entandoPlugin, databaseConnectionInfo,
-                                Collections.singletonList(PLUGINDB)))
+                .map(dsr -> List.of(buildDatabaseSchemaConnectionInfo(entandoPlugin, databaseConnectionInfo,
+                        pluginDbmsSecretName, schemaNameOverride)))
                 .orElse(Collections.emptyList());
-
     }
+
+    private static DatabaseSchemaConnectionInfo buildDatabaseSchemaConnectionInfo(
+            EntandoCustomResource entandoBaseCustomResource,
+            DatabaseConnectionInfo databaseConnectionInfo,
+            String pluginDbmsSecretName, String schemaNameOverride) {
+        //~
+        final var dbmsVendor = databaseConnectionInfo.getVendor();
+        final var pluginName = entandoBaseCustomResource.getMetadata().getName();
+
+        String schemaName;
+
+        //noinspection ReplaceNullCheck
+        if (schemaNameOverride != null) {
+            schemaName = schemaNameOverride;
+        } else {
+            schemaName = (dbmsVendor.schemaIsDatabase())
+                    ? generateUsername(pluginName, dbmsVendor)
+                    : generateDbName(pluginName, dbmsVendor);
+        }
+
+        final var secret = SecretUtils.generateSecret(entandoBaseCustomResource, pluginDbmsSecretName, schemaName);
+
+        return new DefaultDatabaseSchemaConnectionInfo(databaseConnectionInfo, schemaName, secret);
+    }
+
+    private static String generateDbName(String baseName, DbmsVendorConfig dbmsVendor) {
+        String res = NameUtils.snakeCaseOf(baseName);
+        if (res.length() > dbmsVendor.getMaxDatabaseNameLength()) {
+            res = res.substring(0, dbmsVendor.getMaxDatabaseNameLength() - 4) + "_" + NameUtils.randomNumeric(4);
+            debugLogMaxSize("database name", baseName, dbmsVendor, res);
+        }
+        return res;
+    }
+
+    static String generateUsername(String baseName, DbmsVendorConfig dbmsVendor) {
+        int maxLength = dbmsVendor.getMaxUsernameLength();
+        String res = NameUtils.snakeCaseOf(baseName);
+        if (res.length() > maxLength - 1) {
+            int lenWithoutRandom = maxLength - (USERNAME_RANDOM_HASH_LENGTH + 1);
+            res = res.substring(0, lenWithoutRandom);
+            res += "_" + NameUtils.randomNumeric(USERNAME_RANDOM_HASH_LENGTH);
+            debugLogMaxSize("database username", baseName, dbmsVendor, res);
+        }
+        return res;
+    }
+
+    private static void debugLogMaxSize(String type, String baseName, DbmsVendorConfig dbmsVendor, String res) {
+        logger.debug("{} \"{}\" too long: {} supports max length of {}. Truncating to \"{}\"",
+                type, baseName, dbmsVendor.getName(), dbmsVendor.getMaxUsernameLength(), res);
+    }
+
 
     @Override
     public Optional<String> getStorageClass() {

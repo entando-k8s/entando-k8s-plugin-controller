@@ -38,7 +38,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mock;
 
-abstract class PluginTestBase implements FluentTraversals, ControllerTestHelper {
+abstract class  PluginTestBase implements FluentTraversals, ControllerTestHelper {
 
     public static final String MY_PLUGIN = "my-plugin";
 
