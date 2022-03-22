@@ -30,10 +30,12 @@ import org.entando.kubernetes.model.common.DbmsVendor;
 import org.entando.kubernetes.model.common.EntandoCustomResource;
 import org.entando.kubernetes.model.common.EntandoDeploymentPhase;
 import org.entando.kubernetes.model.plugin.EntandoPluginBuilder;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Tags;
 import org.junit.jupiter.api.Test;
 
+@Disabled
 @Tags({@Tag("manual")})
 class ManualRunTest implements FluentIntegrationTesting {
 

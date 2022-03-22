@@ -30,6 +30,7 @@ import static org.mockito.Mockito.when;
 
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.client.dsl.PodResource;
+import io.fabric8.kubernetes.client.dsl.PrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
@@ -110,6 +111,7 @@ class DeployEntandoPluginTimeoutTest extends PluginTestBase implements VariableR
                     KubernetesClientForControllers k8sClientCont = this.getClient().entandoResources();
 
                     var mockedPod = mock(PodResource.class);
+                    var mockedLoggable = mock(PrettyLoggable.class);
                     var mockedDeployment = mock(RollableScalableResource.class);
 
                     when(k8sClientCont.getPodByName(anyString(), anyString())).thenReturn(mockedPod);
@@ -117,10 +119,12 @@ class DeployEntandoPluginTimeoutTest extends PluginTestBase implements VariableR
 
                     var res = new ArrayList<String>();
 
+                    doAnswer((invocationOnMock) -> mockedLoggable).when(mockedPod).tailingLines(anyInt());
+
                     doAnswer((invocationOnMock) -> {
                         res.add("<<example log>>");
                         return "<<example log>>";
-                    }).when(mockedPod).getLog();
+                    }).when(mockedLoggable).getLog();
 
                     doAnswer((invocationOnMock) -> {
                         Pod pod = (Pod) invocationOnMock.callRealMethod();

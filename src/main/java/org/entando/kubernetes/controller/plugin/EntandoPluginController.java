@@ -18,8 +18,8 @@ package org.entando.kubernetes.controller.plugin;
 
 import static java.lang.String.format;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import io.fabric8.kubernetes.client.internal.SerializationUtils;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
@@ -51,6 +51,7 @@ import picocli.CommandLine;
 public class EntandoPluginController implements Runnable {
 
     private static final Logger LOGGER = Logger.getLogger(EntandoPluginController.class.getName());
+    public static final String DBMS_SECRET_USERNAME_KEY = "username";
     private final KubernetesClientForControllers k8sClient;
     private final CapabilityProvider capabilityProvider;
     private final DeploymentProcessor deploymentProcessor;
@@ -66,16 +67,30 @@ public class EntandoPluginController implements Runnable {
 
     @Override
     public void run() {
-        this.entandoPlugin = (EntandoPlugin) k8sClient.resolveCustomResourceToProcess(Collections.singletonList(EntandoPlugin.class));
+        entandoPlugin = (EntandoPlugin) k8sClient.resolveCustomResourceToProcess(
+                Collections.singletonList(EntandoPlugin.class));
         EntandoPluginServerDeployable deployable;
         try {
             this.entandoPlugin = k8sClient.deploymentStarted(entandoPlugin);
             final DatabaseConnectionInfo dbConnectionInfo = provideDatabaseIfRequired();
             final SsoConnectionInfo ssoConnectionInfo = provideSso();
-            deployable = new EntandoPluginServerDeployable(dbConnectionInfo,
-                    ssoConnectionInfo, entandoPlugin);
+
+            var pluginDbmsSecretName = EntandoPluginServerDeployable.mkPlugingSecretName(entandoPlugin);
+
+            // If it's an update we force the schema name to match the one used
+            // by the original installation
+            var schemaNameOverride = getCurrentUserNameFromSecret(pluginDbmsSecretName);
+
+            deployable = new EntandoPluginServerDeployable(
+                    dbConnectionInfo,
+                    ssoConnectionInfo,
+                    entandoPlugin,
+                    pluginDbmsSecretName,
+                    schemaNameOverride);
+
             this.deploymentProcessor.processDeployable(deployable, calculateDbAwareTimeout());
             this.entandoPlugin = k8sClient.deploymentEnded(entandoPlugin);
+
         } catch (Exception e) {
             try {
                 entandoPlugin = k8sClient.deploymentFailed(entandoPlugin, e, NameUtils.MAIN_QUALIFIER);
@@ -97,6 +112,32 @@ public class EntandoPluginController implements Runnable {
         });
     }
 
+    /**
+     * Returns the username of the current plugin installation.
+     * <p>
+     * The function would find something only if there is an active or failed plugin installation,
+     * which means that it's usually called during an update process or an installation run after
+     * a failure which left intact the database and the credential secrets of the plugin.
+     * </p>
+     * @param pluginDbmsSecretName the name of the plugin that stores the username
+     * @return the current username of null if not found
+     */
+    private String getCurrentUserNameFromSecret(String pluginDbmsSecretName) {
+        try {
+            var secRes = k8sClient.getSecretByName(pluginDbmsSecretName);
+            var sec = (secRes != null) ? secRes.get() : null;
+            if (sec != null) {
+                return sec.getData().compute(DBMS_SECRET_USERNAME_KEY,
+                        (k, v) -> new String(Base64.getDecoder().decode(v), StandardCharsets.UTF_8));
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, e,
+                    () -> "Error analysing the plugin secret of name \"pluginDbmsSecretName\" during"
+            );
+        }
+        return null;
+    }
+
     private void cleanupFailedPluginInstallation(ServerStatus failedServerStatus) {
         var dpn = failedServerStatus.getDeploymentName().orElse("");
         if (dpn.length() == 0) {
@@ -111,7 +152,10 @@ public class EntandoPluginController implements Runnable {
 
     static {
         var tmp = "##########";
-        STDOUT_SEPARATOR = tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp;
+        STDOUT_SEPARATOR = "\033[41m\033[1;97m"
+                + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp + tmp
+                + "\033[0;39m"
+        ;
     }
 
     private void printFailureReport(EntandoControllerFailure s) {
@@ -120,20 +164,23 @@ public class EntandoPluginController implements Runnable {
             final var ns = s.getFailedObjectNamespace();
             directPrint("");
             directPrint(STDOUT_SEPARATOR);
+            directPrint(STDOUT_SEPARATOR);
+            directPrint(STDOUT_SEPARATOR);
             directPrint("### ERROR STARTING THE PLUGIN POD");
             directPrint("### the plugin pod \"" + ns + "/" + name + "\" failed to start");
-            var failedPod = k8sClient.getPodByName(name, ns);
+            directPrint("");
             directPrint("### This is its log:");
             directPrint("");
-            directPrint(SerializationUtils.getMapper().writeValueAsString(failedPod.getLog()));
+            var failedPod = k8sClient.getPodByName(name, ns);
+            directPrint(failedPod.tailingLines(300).getLog());
             directPrint("");
             directPrint(STDOUT_SEPARATOR);
             directPrint(STDOUT_SEPARATOR);
+            directPrint(STDOUT_SEPARATOR);
             directPrint("");
-        } catch (JsonProcessingException e) {
-            directPrint("<<Unable to convert the failed pod data to yaml>>");
-        } catch (Exception t) {
+        } catch (Exception e) {
             directPrint("<<Unable to extract the failed pod log>>");
+            e.printStackTrace(); //NOSONAR
         }
     }
 
@@ -162,13 +209,18 @@ public class EntandoPluginController implements Runnable {
                             .withImplementation(StandardCapabilityImplementation.valueOf(dbmsVendor.name()))
                             .withResolutionScopePreference(CapabilityScope.NAMESPACE, CapabilityScope.DEDICATED, CapabilityScope.CLUSTER)
                             .build(), 180);
-            capabilityResult.getProvidedCapability().getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).ifPresent(s ->
-                    this.entandoPlugin = this.k8sClient.updateStatus(entandoPlugin, new ServerStatus(NameUtils.DB_QUALIFIER, s)));
+            capabilityResult.getProvidedCapability().getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER)
+                    .ifPresent(s ->
+                            this.entandoPlugin = this.k8sClient.updateStatus(
+                                    entandoPlugin,
+                                    new ServerStatus(NameUtils.DB_QUALIFIER, s)
+                            ));
             capabilityResult.getControllerFailure().ifPresent(f -> {
-                throw new EntandoControllerException(format("Could not prepare database for EntandoPlugin %s/%s%n%s", entandoPlugin
-                                .getMetadata().getNamespace(), entandoPlugin
-                                .getMetadata().getName(),
-                        f.getDetailMessage()));
+                throw new EntandoControllerException(
+                        format("Could not prepare database for EntandoPlugin %s/%s%n%s",
+                                entandoPlugin.getMetadata().getNamespace(),
+                                entandoPlugin.getMetadata().getName(),
+                                f.getDetailMessage()));
             });
             return new ProvidedDatabaseCapability(capabilityResult);
         } else {

@@ -19,16 +19,22 @@ package org.entando.kubernetes.controller.plugin;
 import static io.qameta.allure.Allure.step;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 
 import io.fabric8.kubernetes.api.model.Container;
+import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
+import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.Ingress;
+import io.fabric8.kubernetes.client.dsl.Resource;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Issue;
@@ -77,13 +83,16 @@ class DeployEntandoPluginTest extends PluginTestBase implements VariableReferenc
         step("Given that the Operator runs in a Kubernetes environment the requires a filesystem user/group override for mounted volumes",
                 () -> attachEnvironmentVariable(EntandoOperatorConfigProperty.ENTANDO_REQUIRES_FILESYSTEM_GROUP_OVERRIDE, "true"));
         step("And the routing suffix has been configured globally ",
-                () -> attachEnvironmentVariable(EntandoOperatorConfigProperty.ENTANDO_DEFAULT_ROUTING_SUFFIX, THE_ROUTING_SUFFIX));
+                () -> attachEnvironmentVariable(EntandoOperatorConfigProperty.ENTANDO_DEFAULT_ROUTING_SUFFIX,
+                        THE_ROUTING_SUFFIX));
         theDefaultTlsSecretWasCreatedAndConfiguredAsDefault();
         step("And there is a controller to process requests for the DBMS capability",
-                () -> doAnswer(withADatabaseCapabilityStatus(DbmsVendor.POSTGRESQL, "my_db")).when(client.capabilities())
+                () -> doAnswer(withADatabaseCapabilityStatus(DbmsVendor.POSTGRESQL, "my_db")).when(
+                                client.capabilities())
                         .waitForCapabilityCompletion(argThat(matchesCapability(StandardCapability.DBMS)), anyInt()));
         step("And there is a controller to process requests for the SSO capability",
-                () -> doAnswer(withAnSsoCapabilityStatus("mykeycloak.apps.serv.run", "my-realm")).when(client.capabilities())
+                () -> doAnswer(withAnSsoCapabilityStatus("mykeycloak.apps.serv.run", "my-realm")).when(
+                                client.capabilities())
                         .waitForCapabilityCompletion(argThat(matchesCapability(StandardCapability.SSO)), anyInt()));
         step("When I create an EntandoPlugin with minimal configuration",
                 () -> {
@@ -119,7 +128,7 @@ class DeployEntandoPluginTest extends PluginTestBase implements VariableReferenc
                             "EntandoPlugin",
                             MY_PLUGIN, LabelNames.DEPLOYMENT_QUALIFIER.getName(), NameUtils.MAIN_QUALIFIER));
             assertThat(mainDbPreprationJob).isNotNull();
-            final Container initContainer = theInitContainerNamed("my-plugin-plugindb-schema-creation-job").on(mainDbPreprationJob);
+            final Container initContainer = theInitContainerNamed("my-plugin-schema-creation-job").on(mainDbPreprationJob);
             verifyDbJobAdminCredentials("default-postgresql-dbms-in-namespace-admin-secret", initContainer);
             verifyDbJobSchemaCredentials(dbSecret, initContainer);
         });
@@ -189,6 +198,30 @@ class DeployEntandoPluginTest extends PluginTestBase implements VariableReferenc
 
         });
         attachKubernetesState();
+
+        // UPDATE
+        mockUserNameOnSecret();
+
+        step("And when I try to update the plugin", () -> {
+                    this.plugin = getClient().entandoResources().reload(plugin);
+                    this.plugin.getSpec().getEnvironmentVariables().add(new EnvVar("X", "Y", null));
+                    runControllerAgainstCustomResource(plugin);
+                }
+        );
+        step("Then the Plugin was updated completed successfully", () -> {
+            attachKubernetesResource("EntandoPlugin", entandoPlugin);
+            assertThat(entandoPlugin.getStatus().getPhase()).isEqualTo(EntandoDeploymentPhase.SUCCESSFUL);
+        });
+    }
+
+    private void mockUserNameOnSecret() {
+        var sec = new SecretBuilder()
+                .withType("opaque")
+                .withNewMetadata().withName("test-secret").endMetadata()
+                .withData(Map.of("username", "dGVzdC11c2Vy", "password", "dGVzdC1wYXNz")).build();
+        var secRes = mock(Resource.class);
+        doReturn(secRes).when(getClient().entandoResources()).getSecretByName(anyString());
+        doReturn(sec).when(secRes).get();
     }
 
 }
