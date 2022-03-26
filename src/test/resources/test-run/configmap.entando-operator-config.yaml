@@ -1,0 +1,18 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: entando-operator-config
+data:
+  entando.timeout.adjustment.ratio: '1'
+
+  entando.profile.plugins.my-test-plugin: |-
+    resources.limits.cpu: "1000"
+    resources.limits.memory: "2000"
+    resources.requests.cpu: "500"
+    resources.requests.memory: "500"
+
+  entando.profile.plugins.pn-1a802939-e20c47ff-myapp2mysql-this-time-is-very-long-but-very-very-long-bundle-excess17-myapp-2-mysql: |-
+    resources.limits.cpu: "1100"
+    resources.limits.memory: "2100"
+    resources.requests.cpu: "510"
+    resources.requests.memory: "510"

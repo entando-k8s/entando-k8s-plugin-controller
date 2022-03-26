@@ -1,0 +1,20 @@
+---
+apiVersion: entando.org/v1
+kind: EntandoPlugin
+metadata:
+  name: pn-1a802939-e20c47ff-myapp2mysql-this-time-is-very-long-but-very-very-long-bundle-excess17-myapp-2-mysql
+spec:
+  companionContainers: []
+  connectionConfigNames: []
+  dbms: mysql
+  environmentVariables: []
+  healthCheckPath: "/management/health"
+  image: excess17/myapp-2-mysql:0.0.1-SNAPSHOT
+  ingressPath: "/excess17/myapp-2-mysql"
+  permissions: []
+  replicas: 1
+  roles:
+  - code: myapp2mysql-admin
+    name: myapp2mysql-admin
+  - code: point-2-d-admin
+    name: point-2-d-admin

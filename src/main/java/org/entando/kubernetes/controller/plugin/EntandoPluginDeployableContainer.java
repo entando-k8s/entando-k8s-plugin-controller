@@ -139,7 +139,7 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
 
     @Override
     public int getCpuLimitMillicores() {
-        return (int) getConfigProfile().getNumber("resources.limits.memory", 1000);
+        return (int) getConfigProfile().getNumber("resources.limits.cpu", 1000);
     }
 
     @Override
