@@ -33,7 +33,7 @@ import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
-import io.fabric8.kubernetes.api.model.extensions.Ingress;
+import io.fabric8.kubernetes.api.model.networking.v1.Ingress;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
@@ -183,7 +183,8 @@ class DeployEntandoPluginTest extends PluginTestBase implements VariableReferenc
                     assertThat(ingress.getSpec().getRules().get(0).getHost())
                             .isEqualTo(MY_PLUGIN + "-" + MY_NAMESPACE + "." + THE_ROUTING_SUFFIX));
             step("And the path '/my-plugin' is mapped to the service 'my-plugin-service'", () ->
-                    assertThat(theHttpPath("/my-plugin").on(ingress).getBackend().getServiceName()).isEqualTo("my-plugin-service"));
+                    assertThat(theHttpPath("/my-plugin").on(ingress).getBackend().getService().getName()).isEqualTo(
+                            "my-plugin-service"));
             step("And with TLS configured to use the default TLS secret", () -> {
                 assertThat(ingress.getSpec().getTls().get(0).getHosts())
                         .contains(MY_PLUGIN + "-" + MY_NAMESPACE + "." + THE_ROUTING_SUFFIX);
