@@ -31,12 +31,14 @@ import org.entando.kubernetes.controller.spi.capability.CapabilityProvisioningRe
 import org.entando.kubernetes.controller.spi.client.KubernetesClientForControllers;
 import org.entando.kubernetes.controller.spi.command.DeploymentProcessor;
 import org.entando.kubernetes.controller.spi.common.EntandoControllerException;
+import org.entando.kubernetes.controller.spi.common.EntandoOperatorConfigBase;
 import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
 import org.entando.kubernetes.controller.spi.common.NameUtils;
 import org.entando.kubernetes.controller.spi.container.ProvidedDatabaseCapability;
 import org.entando.kubernetes.controller.spi.container.ProvidedSsoCapability;
 import org.entando.kubernetes.controller.spi.deployable.SsoConnectionInfo;
 import org.entando.kubernetes.controller.spi.result.DatabaseConnectionInfo;
+import org.entando.kubernetes.controller.support.common.EntandoOperatorConfigProperty;
 import org.entando.kubernetes.model.capability.CapabilityRequirementBuilder;
 import org.entando.kubernetes.model.capability.CapabilityScope;
 import org.entando.kubernetes.model.capability.StandardCapability;
@@ -67,6 +69,8 @@ public class EntandoPluginController implements Runnable {
 
     @Override
     public void run() {
+        fixImposeLimitsDefault();
+
         entandoPlugin = (EntandoPlugin) k8sClient.resolveCustomResourceToProcess(
                 Collections.singletonList(EntandoPlugin.class));
         EntandoPluginServerDeployable deployable;
@@ -110,6 +114,18 @@ public class EntandoPluginController implements Runnable {
             throw new CommandLine.ExecutionException(new CommandLine(this),
                     "Error starting the plugin pod");
         });
+    }
+
+    /**
+     * This is a workaround that fixes the default value of the "impose limits" setting but only for the bundle plugins
+     * In the near future the fix will be propagated the rest of the infrastructure and this workaround will be removed.
+     */
+    private void fixImposeLimitsDefault() {
+        var current = EntandoOperatorConfigBase.lookupProperty(
+                EntandoOperatorConfigProperty.ENTANDO_K8S_OPERATOR_IMPOSE_LIMITS).map(Boolean::valueOf);
+        if (current.isEmpty()) {
+            System.setProperty(EntandoOperatorConfigProperty.ENTANDO_K8S_OPERATOR_IMPOSE_LIMITS.toString(), "false");
+        }
     }
 
     /**
