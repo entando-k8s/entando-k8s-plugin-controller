@@ -2,7 +2,7 @@ FROM registry.access.redhat.com/ubi8/ubi-minimal
 LABEL name="Entando K8S Plugin Controller" \
       vendor="Entando" \
       version="v${VERSION}" \
-      release="6" \
+      release="7.0" \
       summary="This container processes the EntandoPlugin custom resource and deploys the specified microservice Docker image." \
       description="This is a run-to-completion container. It processes new EntandoPlugin Custom \
                    Resources and deploys an instance of the specified microservice Docker image \
