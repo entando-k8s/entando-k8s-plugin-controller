@@ -1,0 +1,15 @@
+---
+apiVersion: entando.org/v1
+kind: ProvidedCapability
+metadata:
+  labels:
+    entando.org/capability: Sso
+    entando.org/capability-provision-scope: Namespace
+  name: default-sso-in-namespace
+spec:
+  capability: sso
+  capabilityParameters:
+    preferredDbms: embedded
+  resolutionScopePreference:
+  - Namespace
+  - Cluster

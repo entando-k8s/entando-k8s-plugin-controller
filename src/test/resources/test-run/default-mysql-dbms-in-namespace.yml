@@ -1,0 +1,17 @@
+---
+apiVersion: entando.org/v1
+kind: ProvidedCapability
+metadata:
+  labels:
+    entando.org/capability: Dbms
+    entando.org/capability-implementation: Mysql
+    entando.org/capability-provision-scope: Namespace
+  name: default-mysql-dbms-in-namespace
+  namespace: test-entando-k8s-plugin-controller
+spec:
+  capability: dbms
+  implementation: mysql
+  resolutionScopePreference:
+  - Namespace
+  - Dedicated
+  - Cluster

@@ -18,7 +18,7 @@ package org.entando.kubernetes.controller.plugin;
 
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
-import io.fabric8.kubernetes.api.model.extensions.Ingress;
+import io.fabric8.kubernetes.api.model.networking.v1.Ingress;
 import org.entando.kubernetes.controller.spi.result.ExposedDeploymentResult;
 
 public class EntandoPluginDeploymentResult extends ExposedDeploymentResult<EntandoPluginDeploymentResult> {
