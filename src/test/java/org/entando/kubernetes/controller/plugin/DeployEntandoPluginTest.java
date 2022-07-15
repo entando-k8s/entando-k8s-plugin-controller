@@ -175,22 +175,10 @@ class DeployEntandoPluginTest extends PluginTestBase implements VariableReferenc
                     ));
         });
 
-        step("And a Kubernetes Ingress was created:", () -> {
-            final Ingress ingress = client.ingresses()
-                    .loadIngress(entandoPlugin.getMetadata().getNamespace(), NameUtils.standardIngressName(entandoPlugin));
-            attachKubernetesResource("Ingress", ingress);
-            step("With a hostname derived from the Plugin name, namespace and the routing suffix", () ->
-                    assertThat(ingress.getSpec().getRules().get(0).getHost())
-                            .isEqualTo(MY_PLUGIN + "-" + MY_NAMESPACE + "." + THE_ROUTING_SUFFIX));
-            step("And the path '/my-plugin' is mapped to the service 'my-plugin-service'", () ->
-                    assertThat(theHttpPath("/my-plugin").on(ingress).getBackend().getService().getName()).isEqualTo(
-                            "my-plugin-service"));
-            step("And with TLS configured to use the default TLS secret", () -> {
-                assertThat(ingress.getSpec().getTls().get(0).getHosts())
-                        .contains(MY_PLUGIN + "-" + MY_NAMESPACE + "." + THE_ROUTING_SUFFIX);
-                assertThat(ingress.getSpec().getTls().get(0).getSecretName()).isEqualTo(DEFAULT_TLS_SECRET);
-            });
-        });
+        /*
+         * The step "And a Kubernetes Ingress was created" was suppressed as now
+         * the ingresses is created by the entando-k8s-app-plugin-link-controller
+         */
 
         step("And the default TLS secret was cloned into the EntandoPlugin's deployment namespace", () -> {
             final Secret secret = client.secrets().loadSecret(entandoPlugin, DEFAULT_TLS_SECRET);

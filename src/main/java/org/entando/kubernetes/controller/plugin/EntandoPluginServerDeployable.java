@@ -83,7 +83,7 @@ public class EntandoPluginServerDeployable implements IngressingDeployableBase<E
 
     @Override
     public boolean isIngressRequired() {
-        return true;
+        return false;
     }
 
     @Override
