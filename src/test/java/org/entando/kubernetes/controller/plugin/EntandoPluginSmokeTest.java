@@ -26,13 +26,17 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.LocalPortForward;
 import io.fabric8.kubernetes.client.Watcher.Action;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.entando.kubernetes.controller.spi.common.TrustStoreHelper;
 import org.entando.kubernetes.controller.support.client.impl.DefaultSimpleK8SClient;
 import org.entando.kubernetes.controller.support.client.impl.EntandoOperatorTestConfig;
@@ -111,10 +115,24 @@ class EntandoPluginSmokeTest implements FluentIntegrationTesting {
         });
 
         step("Then I can successfully access the Plugin's health URL", () -> {
+
+            Map<String, String> labels = Map.of("EntandoPlugin", TEST_PLUGIN_NAME,
+                    "entando.org/deployment", TEST_PLUGIN_NAME);
+            String name = client.pods().inNamespace(TEST_NAMESPACE).withLabels(labels).list().getItems().get(0)
+                    .getMetadata().getName();
+            LocalPortForward pfwd = client.pods().inNamespace(TEST_NAMESPACE).withName(name)
+                    .portForward(8081);
             final String strUrl =
-                    HttpTestHelper.getDefaultProtocol() + "://" + ingressHostName
+                    HttpTestHelper.getDefaultProtocol() + "://localhost:" + pfwd.getLocalPort()
                             + "/avatarPlugin/management/health";
-            await().atMost(1, TimeUnit.MINUTES).ignoreExceptions().until(() -> HttpTestHelper.statusOk(strUrl));
+            int minutesToWait = 1;
+            Logger.getLogger(getClass().getName())
+                    .log(Level.WARNING,
+                            "plugin heath to check:'" + strUrl + "' wait for minutes:'" + minutesToWait + "'");
+
+            await().atMost(minutesToWait, TimeUnit.MINUTES).ignoreExceptions()
+                    .until(() -> HttpTestHelper.statusOk(strUrl));
+
             assertThat(HttpTestHelper.statusOk(strUrl)).isTrue();
         });
     }
