@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 env:
-  ENTANDO_OPT_USE_PPL_TAG: "v1.4.1"
+  ENTANDO_OPT_USE_PPL_TAG: "v1.4.2"
   ENTANDO_OPT_DATA_REPO: "${{ secrets.ENTANDO_OPT_DATA_REPO }}"
   ENTANDO_OPT_DATA_REPO_TOKEN: "${{ secrets.ENTANDO_OPT_DATA_REPO_TOKEN }}"
   ENTANDO_OPT_ENVIRONMENT_NAMES: "${{ secrets.ENTANDO_OPT_ENVIRONMENT_NAMES }}"
@@ -93,9 +93,8 @@ jobs:
           export ENTANDO_OPT_DOCKER_ALT_LOGIN_URL="${{ secrets.ENTANDO_OPT_DOCKER_ALT_LOGIN }}"
           export ENTANDO_OPT_DOCKER_ALT_USERNAME="${{ secrets.ENTANDO_OPT_DOCKER_ALT_USERNAME }}"
           export ENTANDO_OPT_DOCKER_ALT_PASSWORD="${{ secrets.ENTANDO_OPT_DOCKER_ALT_PASSWORD }}"
-
+          
           ~/ppl-run docker publish --id "PUBLISH-DOCKER" --lcd "$LOCAL_CLONE_DIR"
-
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # POST PUB JOBS
@@ -137,7 +136,6 @@ jobs:
           ENTANDO_OPT_DOCKER_ORG: "${{ secrets.ENTANDO_OPT_DOCKER_ORG }}"
         run: |
           ~/ppl-run docker scan --id "SCAN-DOCKER" --lcd "$LOCAL_CLONE_DIR"
-
   post-dep-tests:
     needs: [ 'publication' ]
     if: needs.publication.outputs.POST_DEP_TESTS == 'true'
@@ -169,12 +167,11 @@ jobs:
       - name: "Post deployment tests"
         run: |
           ${{ secrets.ENTANDO_OPT_PPL_INSTALL_CMD }}
-
+          
           export ENTANDO_OPT_OKD_LOGIN_TOKEN="${{ secrets.ENTANDO_OPT_OKD_LOGIN_TOKEN }}"
           export ENTANDO_OPT_IMAGE_REGISTRY_CREDENTIALS="${{ secrets.ENTANDO_OPT_IMAGE_REGISTRY_CREDENTIALS }}"
           export ENTANDO_OPT_DOCKER_USERNAME="${{ secrets.ENTANDO_OPT_DOCKER_USERNAME }}"
           export ENTANDO_OPT_DOCKER_PASSWORD="${{ secrets.ENTANDO_OPT_DOCKER_PASSWORD }}"
           export ENTANDO_OPT_TEST_TLS_CRT="${{ secrets.ENTANDO_OPT_TEST_TLS_CRT }}"
           export ENTANDO_OPT_TEST_TLS_KEY="${{ secrets.ENTANDO_OPT_TEST_TLS_KEY }}"
-
           ~/ppl-run generic "POST-DEP-TESTS" --id "POST_DEP_TESTS" --lcd "$LOCAL_CLONE_DIR"
