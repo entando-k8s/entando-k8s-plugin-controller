@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import org.apache.commons.lang3.StringUtils;
 import org.entando.kubernetes.controller.spi.common.DbmsVendorConfig;
 import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfigProperty;
 import org.entando.kubernetes.controller.spi.common.NameUtils;
@@ -41,6 +42,7 @@ import org.entando.kubernetes.controller.spi.container.SsoAwareContainer;
 import org.entando.kubernetes.controller.spi.deployable.SsoClientConfig;
 import org.entando.kubernetes.controller.spi.deployable.SsoConnectionInfo;
 import org.entando.kubernetes.controller.spi.result.DatabaseConnectionInfo;
+import org.entando.kubernetes.controller.support.common.EntandoOperatorConfig;
 import org.entando.kubernetes.model.common.DbmsVendor;
 import org.entando.kubernetes.model.common.EntandoCustomResource;
 import org.entando.kubernetes.model.common.EntandoResourceRequirements;
@@ -139,12 +141,21 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
 
     @Override
     public int getCpuLimitMillicores() {
-        return (int) getConfigProfile().getNumber("resources.limits.cpu", 1000);
+        return getConfigValue("resources.limits.cpu", 1000);
     }
 
     @Override
     public int getMemoryLimitMebibytes() {
-        return (int) getConfigProfile().getNumber("resources.limits.memory", 1024);
+        return getConfigValue("resources.limits.memory", 1024);
+    }
+
+    private int getConfigValue(String key, int defaultValue) {
+        boolean mustImposeLimits = EntandoOperatorConfig.imposeResourceLimits();
+        if (mustImposeLimits) {
+            return (int) getConfigProfile().getNumber(key, defaultValue);
+        } else {
+            return defaultValue;
+        }
     }
 
     @Override
@@ -263,5 +274,21 @@ public class EntandoPluginDeployableContainer implements PersistentVolumeAwareCo
 
     private KeycloakAwareSpec getKeycloakAwareSpec() {
         return entandoPlugin.getSpec();
+    }
+
+    @Override
+    public boolean isResourceRequestApplicable() {
+        boolean areRequestsNotEmpty = entandoPlugin.getSpec().getResourceRequirements()
+                .map(r ->
+                        StringUtils.isNotBlank(r.getCpuRequest().orElse(""))
+                                || StringUtils.isNotBlank(r.getMemoryRequest().orElse(""))
+                                || StringUtils.isNotBlank(r.getStorageRequest().orElse(""))
+                )
+                .orElse(false);
+        boolean mustImposeLimits = EntandoOperatorConfig.imposeResourceLimits();
+        boolean isResourceRequestApplicable = areRequestsNotEmpty || mustImposeLimits;
+        logger.debug("is ResourceRequest applicable ? '{}' areRequestsNotEmpty:'{}' mustImposeLimits:'{}'",
+                isResourceRequestApplicable, areRequestsNotEmpty, mustImposeLimits);
+        return isResourceRequestApplicable;
     }
 }

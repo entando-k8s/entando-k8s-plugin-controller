@@ -73,6 +73,7 @@ public class EntandoPluginController implements Runnable {
 
         entandoPlugin = (EntandoPlugin) k8sClient.resolveCustomResourceToProcess(
                 Collections.singletonList(EntandoPlugin.class));
+
         EntandoPluginServerDeployable deployable;
         try {
             this.entandoPlugin = k8sClient.deploymentStarted(entandoPlugin);
