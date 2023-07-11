@@ -75,6 +75,36 @@ class EntandoPluginDeployableContainerTest {
         );
     }
 
+    @Test
+    void test_resourceRequestApplicable() {
+        var plugin = new EntandoPluginBuilder()
+                .withNewMetadata().withName("myPlugin").endMetadata()
+                .withNewSpec()
+                .withNewResourceRequirements().withCpuRequest("").withMemoryRequest("10Mi").endResourceRequirements()
+                .endSpec()
+                .build();
+        doReturn(DbmsVendorConfig.POSTGRESQL).when(TD.dbi).getVendor();
+        var pdc = new EntandoPluginDeployableContainer(
+                plugin, "a-test-secret", TD.cap,
+                TD.dbi, TD.clc, null
+        );
+        assertThat(pdc.isResourceRequestApplicable()).isTrue();
+
+        plugin = new EntandoPluginBuilder()
+                .withNewMetadata().withName("myPlugin").endMetadata()
+                .withNewSpec()
+                .withNewResourceRequirements().withStorageRequest("10Mi").endResourceRequirements()
+                .endSpec()
+                .build();
+        doReturn(DbmsVendorConfig.POSTGRESQL).when(TD.dbi).getVendor();
+        pdc = new EntandoPluginDeployableContainer(
+                plugin, "a-test-secret", TD.cap,
+                TD.dbi, TD.clc, null
+        );
+        assertThat(pdc.isResourceRequestApplicable()).isTrue();
+
+    }
+
     static class TD {
 
         static final String O50 = "oooooooooooooooooooooooooooooooooooooooooooooooooo";
