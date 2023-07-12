@@ -26,6 +26,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.inject.Inject;
+import org.apache.commons.lang3.StringUtils;
 import org.entando.kubernetes.controller.spi.capability.CapabilityProvider;
 import org.entando.kubernetes.controller.spi.capability.CapabilityProvisioningResult;
 import org.entando.kubernetes.controller.spi.client.KubernetesClientForControllers;
@@ -77,9 +78,10 @@ public class EntandoPluginController implements Runnable {
         EntandoPluginServerDeployable deployable;
         try {
             this.entandoPlugin = k8sClient.deploymentStarted(entandoPlugin);
-            final DatabaseConnectionInfo dbConnectionInfo = provideDatabaseIfRequired();
-            final SsoConnectionInfo ssoConnectionInfo = provideSso();
+            final DatabaseConnectionInfo dbConnectionInfo = provideDbConnectionInfo(entandoPlugin);
+            final SsoConnectionInfo ssoConnectionInfo = provideSsoConnectionInfo(entandoPlugin);
 
+            // FIXME
             var pluginDbmsSecretName = EntandoPluginServerDeployable.mkPlugingSecretName(entandoPlugin);
 
             // If it's an update we force the schema name to match the one used
@@ -129,6 +131,57 @@ public class EntandoPluginController implements Runnable {
         }
     }
 
+    private boolean isPrimary(EntandoPlugin entandoPlugin) {
+        return StringUtils.isBlank(entandoPlugin.getSpec().getTenantCode())
+                || StringUtils.equalsIgnoreCase("PRIMARY", entandoPlugin.getSpec().getTenantCode());
+    }
+
+    private SsoConnectionInfo provideSsoConnectionInfo(EntandoPlugin entandoPlugin) throws TimeoutException {
+        if (isPrimary(entandoPlugin)) {
+            return provideSso();
+        } else {
+            return getTenantSsoInfo(entandoPlugin.getSpec().getTenantCode());
+        }
+    }
+
+    private SsoConnectionInfo getTenantSsoInfo(String tenantCode) throws TimeoutException {
+        final CapabilityProvisioningResult capabilityResult = capabilityProvider
+                .provideCapability(entandoPlugin, new CapabilityRequirementBuilder()
+                        .withCapability(StandardCapability.SSO)
+                        .withPreferredDbms(determineDbmsForSso())
+                        .withPreferredIngressHostName(entandoPlugin.getSpec().getIngressHostName().orElse(null))
+                        .withPreferredTlsSecretName(entandoPlugin.getSpec().getTlsSecretName().orElse(null))
+                        .withResolutionScopePreference(CapabilityScope.NAMESPACE, CapabilityScope.CLUSTER)
+                        .build(), 240);
+        capabilityResult.getProvidedCapability().getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).ifPresent(s ->
+                this.entandoPlugin = this.k8sClient.updateStatus(entandoPlugin, new ServerStatus(NameUtils.SSO_QUALIFIER, s)));
+        capabilityResult.getControllerFailure().ifPresent(f -> {
+            throw new EntandoControllerException(format("Could not prepare SSO for EntandoPlugin %s/%s%n%s", entandoPlugin
+                            .getMetadata().getNamespace(), entandoPlugin
+                            .getMetadata().getName(),
+                    f.getDetailMessage()));
+        });
+        return new SimpleSsoConnectionInfo(capabilityResult, tenantCode);
+    }
+
+    private DatabaseConnectionInfo provideDbConnectionInfo(EntandoPlugin entandoPlugin) throws TimeoutException {
+        if (isPrimary(entandoPlugin)) {
+            return provideDatabaseIfRequired();
+        } else {
+            return getTenantDbInfo(entandoPlugin.getSpec().getTenantCode());
+        }
+    }
+
+    private DatabaseConnectionInfo getTenantDbInfo(String tenantCode) {
+        final DbmsVendor dbmsVendor = entandoPlugin.getSpec().getDbms().orElse(DbmsVendor.NONE);
+        if (requiresDbmsService(dbmsVendor)) {
+            // FIXME
+            return new SimpleDatabaseConnectionInfo(k8sClient, tenantCode);
+        } else {
+            return null;
+        }
+    }
+
     /**
      * Returns the username of the current plugin installation.
      * <p>
@@ -136,6 +189,7 @@ public class EntandoPluginController implements Runnable {
      * which means that it's usually called during an update process or an installation run after
      * a failure which left intact the database and the credential secrets of the plugin.
      * </p>
+     *
      * @param pluginDbmsSecretName the name of the plugin that stores the username
      * @return the current username of null if not found
      */
