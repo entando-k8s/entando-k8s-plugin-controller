@@ -132,8 +132,10 @@ public class EntandoPluginController implements Runnable {
     }
 
     private boolean isPrimary(EntandoPlugin entandoPlugin) {
-        return StringUtils.isBlank(entandoPlugin.getSpec().getTenantCode())
+        boolean isPrimary = StringUtils.isBlank(entandoPlugin.getSpec().getTenantCode())
                 || StringUtils.equalsIgnoreCase("PRIMARY", entandoPlugin.getSpec().getTenantCode());
+        LOGGER.log(Level.SEVERE, String.format("tenantCode '%s' is primary ? '%s'", entandoPlugin.getSpec().getTenantCode(), isPrimary));
+        return isPrimary;
     }
 
     private SsoConnectionInfo provideSsoConnectionInfo(EntandoPlugin entandoPlugin) throws TimeoutException {

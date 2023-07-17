@@ -5,6 +5,7 @@ import io.fabric8.kubernetes.api.model.SecretBuilder;
 import java.util.Map;
 import java.util.Optional;
 import org.entando.kubernetes.controller.spi.capability.CapabilityProvisioningResult;
+import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
 import org.entando.kubernetes.controller.spi.deployable.SsoConnectionInfo;
 
 public class SimpleSsoConnectionInfo implements SsoConnectionInfo {
@@ -19,7 +20,8 @@ public class SimpleSsoConnectionInfo implements SsoConnectionInfo {
 
     @Override
     public String getBaseUrlToUse() {
-        return "/auth";
+        return EntandoOperatorSpiConfig.forceExternalAccessToKeycloak()
+                ? this.getExternalBaseUrl() : (String) this.getInternalBaseUrl().orElse(this.getExternalBaseUrl());
     }
 
     //FIXME
