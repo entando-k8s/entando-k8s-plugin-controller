@@ -41,9 +41,8 @@ public class TenantConfigurationService {
 
         if (StringUtils.isNotBlank(tenantsConfigAsString)) {
             try {
-                list = new ObjectMapper().readValue(tenantsConfigAsString,
-                                new TypeReference<List<Map<String, String>>>() {
-                                })
+                list = new ObjectMapper()
+                        .readValue(tenantsConfigAsString, new TypeReference<List<Map<String, String>>>() {})
                         .stream()
                         .map(TenantConfiguration::new)
                         .collect(Collectors.toList());
