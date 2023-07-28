@@ -26,6 +26,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.inject.Inject;
+import org.apache.commons.lang3.StringUtils;
 import org.entando.kubernetes.controller.spi.capability.CapabilityProvider;
 import org.entando.kubernetes.controller.spi.capability.CapabilityProvisioningResult;
 import org.entando.kubernetes.controller.spi.client.KubernetesClientForControllers;
@@ -78,7 +79,7 @@ public class EntandoPluginController implements Runnable {
         try {
             this.entandoPlugin = k8sClient.deploymentStarted(entandoPlugin);
             final DatabaseConnectionInfo dbConnectionInfo = provideDatabaseIfRequired();
-            final SsoConnectionInfo ssoConnectionInfo = provideSso();
+            final SsoConnectionInfo ssoConnectionInfo = provideSsoConnectionInfo(entandoPlugin);
 
             var pluginDbmsSecretName = EntandoPluginServerDeployable.mkPlugingSecretName(entandoPlugin);
 
@@ -127,6 +128,44 @@ public class EntandoPluginController implements Runnable {
         if (current.isEmpty()) {
             System.setProperty(EntandoOperatorConfigProperty.ENTANDO_K8S_OPERATOR_IMPOSE_LIMITS.toString(), "false");
         }
+    }
+
+    private boolean isPrimary(EntandoPlugin entandoPlugin) {
+        boolean isPrimary = StringUtils.isBlank(entandoPlugin.getSpec().getTenantCode())
+                || StringUtils.equalsIgnoreCase("PRIMARY", entandoPlugin.getSpec().getTenantCode());
+        LOGGER.log(Level.SEVERE,
+                String.format("tenantCode '%s' is primary ? '%s'", entandoPlugin.getSpec().getTenantCode(), isPrimary));
+        return isPrimary;
+    }
+
+    private SsoConnectionInfo provideSsoConnectionInfo(EntandoPlugin entandoPlugin) throws TimeoutException {
+        if (isPrimary(entandoPlugin)) {
+            return provideSso();
+        } else {
+            return getTenantSsoInfo(entandoPlugin.getSpec().getTenantCode());
+        }
+    }
+
+    private SsoConnectionInfo getTenantSsoInfo(String tenantCode) throws TimeoutException {
+        final CapabilityProvisioningResult capabilityResult = capabilityProvider
+                .provideCapability(entandoPlugin, new CapabilityRequirementBuilder()
+                        .withCapability(StandardCapability.SSO)
+                        .withPreferredDbms(determineDbmsForSso())
+                        .withPreferredIngressHostName(entandoPlugin.getSpec().getIngressHostName().orElse(null))
+                        .withPreferredTlsSecretName(entandoPlugin.getSpec().getTlsSecretName().orElse(null))
+                        .withResolutionScopePreference(CapabilityScope.NAMESPACE, CapabilityScope.CLUSTER)
+                        .build(), 240);
+        capabilityResult.getProvidedCapability().getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).ifPresent(s ->
+                this.entandoPlugin = this.k8sClient.updateStatus(entandoPlugin,
+                        new ServerStatus(NameUtils.SSO_QUALIFIER, s)));
+        capabilityResult.getControllerFailure().ifPresent(f -> {
+            throw new EntandoControllerException(
+                    format("Could not prepare SSO for EntandoPlugin %s/%s%n%s", entandoPlugin
+                                    .getMetadata().getNamespace(), entandoPlugin
+                                    .getMetadata().getName(),
+                            f.getDetailMessage()));
+        });
+        return new SimpleSsoConnectionInfo(capabilityResult, tenantCode, k8sClient);
     }
 
     /**
