@@ -133,8 +133,8 @@ public class EntandoPluginController implements Runnable {
     private boolean isPrimary(EntandoPlugin entandoPlugin) {
         boolean isPrimary = StringUtils.isBlank(entandoPlugin.getSpec().getTenantCode())
                 || StringUtils.equalsIgnoreCase("PRIMARY", entandoPlugin.getSpec().getTenantCode());
-        LOGGER.log(Level.SEVERE,
-                String.format("tenantCode '%s' is primary ? '%s'", entandoPlugin.getSpec().getTenantCode(), isPrimary));
+        LOGGER.log(Level.SEVERE, () -> String.format("tenantCode '%s' is primary ? '%s'",
+                entandoPlugin.getSpec().getTenantCode(), isPrimary));
         return isPrimary;
     }
 
@@ -147,25 +147,28 @@ public class EntandoPluginController implements Runnable {
     }
 
     private SsoConnectionInfo getTenantSsoInfo(String tenantCode) throws TimeoutException {
+        SsoConnectionInfo ssoInfo =
+                new SimpleSsoConnectionInfo(tenantCode, entandoPlugin.getMetadata().getNamespace(), k8sClient);
+
+        // done for compatibility with non tenant behavior
         final CapabilityProvisioningResult capabilityResult = capabilityProvider
-                .provideCapability(entandoPlugin, new CapabilityRequirementBuilder()
-                        .withCapability(StandardCapability.SSO)
-                        .withPreferredDbms(determineDbmsForSso())
+                .provideCapability(entandoPlugin, new CapabilityRequirementBuilder().withCapability(StandardCapability.SSO)
                         .withPreferredIngressHostName(entandoPlugin.getSpec().getIngressHostName().orElse(null))
                         .withPreferredTlsSecretName(entandoPlugin.getSpec().getTlsSecretName().orElse(null))
                         .withResolutionScopePreference(CapabilityScope.NAMESPACE, CapabilityScope.CLUSTER)
-                        .build(), 240);
-        capabilityResult.getProvidedCapability().getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).ifPresent(s ->
-                this.entandoPlugin = this.k8sClient.updateStatus(entandoPlugin,
-                        new ServerStatus(NameUtils.SSO_QUALIFIER, s)));
+                        .withPreferredDbms(determineDbmsForSso()).build(), 240);
+        capabilityResult.getProvidedCapability().getStatus().getServerStatus(NameUtils.MAIN_QUALIFIER).ifPresent(s -> {
+            s.setAdminSecretName(ssoInfo.getAdminSecret().getMetadata().getName());
+            s.setExternalBaseUrl(ssoInfo.getExternalBaseUrl());
+            this.entandoPlugin = this.k8sClient.updateStatus(entandoPlugin, new ServerStatus(NameUtils.SSO_QUALIFIER, s));
+        });
         capabilityResult.getControllerFailure().ifPresent(f -> {
             throw new EntandoControllerException(
-                    format("Could not prepare SSO for EntandoPlugin %s/%s%n%s", entandoPlugin
-                                    .getMetadata().getNamespace(), entandoPlugin
-                                    .getMetadata().getName(),
-                            f.getDetailMessage()));
+                    format("Could not prepare SSO for EntandoPlugin %s/%s%n%s", entandoPlugin.getMetadata().getNamespace(),
+                            entandoPlugin.getMetadata().getName(), f.getDetailMessage()));
         });
-        return new SimpleSsoConnectionInfo(capabilityResult, tenantCode, k8sClient);
+
+        return ssoInfo;
     }
 
     /**

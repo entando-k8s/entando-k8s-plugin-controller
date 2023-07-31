@@ -3,11 +3,13 @@ package org.entando.kubernetes.controller.plugin;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.ArrayList;
-import java.util.Collection;
+import io.fabric8.kubernetes.api.model.Secret;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -18,22 +20,30 @@ import org.entando.kubernetes.model.common.EntandoMultiTenancy;
 public class TenantConfigurationService {
 
     private static final Logger LOGGER = Logger.getLogger(TenantConfigurationService.class.getName());
-
+    private static final String ENTANDO_TENANT_SECRET = "entando-tenants-secret";
+    private static final String ENTANDO_TENANT_SECRET_KEY = "ENTANDO_TENANTS";
     private final KubernetesClientForControllers k8sClient;
-    //private Optional<TenantConfiguration> tenantConfiguration;
+    private final String namespace;
 
-    public TenantConfigurationService(KubernetesClientForControllers k8sClient) {
+    private Optional<TenantConfiguration> tenantConfiguration;
+
+    public TenantConfigurationService(KubernetesClientForControllers k8sClient, String namespace) {
         this.k8sClient = k8sClient;
-        //  this.tenantConfiguration = Optional.empty();
+        this.namespace = namespace;
+        this.tenantConfiguration = Optional.empty();
     }
 
     private TenantConfiguration fetchTenantConfiguration(String tenantCode) {
-        String tenantConfigsString = fetchEntandoTenantConfigs();
-        List<TenantConfiguration> tenantConfigs = parseEntandoTenantConfigs(tenantConfigsString);
-        return tenantConfigs.stream()
-                .filter(tenantConfiguration -> StringUtils.equals(tenantCode, tenantConfiguration.getTenantCode()))
-                .findFirst().orElseThrow(() -> new IllegalArgumentException(
-                        String.format("tenant configuration not found for tenantCode: '%s'", tenantCode)));
+        return tenantConfiguration.orElseGet(() -> {
+            String tenantConfigsString = fetchEntandoTenantConfigs();
+            List<TenantConfiguration> tenantConfigs = parseEntandoTenantConfigs(tenantConfigsString);
+            TenantConfiguration tc = tenantConfigs.stream()
+                    .filter(tenantConf -> StringUtils.equals(tenantCode, tenantConf.getTenantCode()))
+                    .findFirst().orElseThrow(() -> new IllegalArgumentException(
+                            String.format("tenant configuration not found for tenantCode: '%s'", tenantCode)));
+            tenantConfiguration = Optional.ofNullable(tc);
+            return tc;
+        });
     }
 
     private List<TenantConfiguration> parseEntandoTenantConfigs(String tenantsConfigAsString) {
@@ -47,7 +57,7 @@ public class TenantConfigurationService {
                         .map(TenantConfiguration::new)
                         .collect(Collectors.toList());
             } catch (JsonProcessingException e) {
-                throw new IllegalArgumentException(
+                throw new IllegalStateException(
                         String.format("Error in parse tenant configuration: '%s'", tenantsConfigAsString), e);
             }
 
@@ -55,7 +65,7 @@ public class TenantConfigurationService {
                     .findFirst().ifPresent(tc -> {
                         LOGGER.log(Level.SEVERE,
                                 String.format("You cannot use '%s' as tenant code", EntandoMultiTenancy.PRIMARY_TENANT));
-                        throw new IllegalArgumentException(
+                        throw new IllegalStateException(
                                 String.format("You cannot use '%s' as tenant code", EntandoMultiTenancy.PRIMARY_TENANT));
                     });
 
@@ -64,28 +74,24 @@ public class TenantConfigurationService {
     }
 
     private String fetchEntandoTenantConfigs() {
-        // FIXME only for test purpose
-        return "[\n"
-                + "  {\n"
-                + "    \"tenantCode\": \"tenant1\",\n"
-                + "    \"kcAuthUrl\": \"ent.10.4.100.225.nip.io/auth\",\n"
-                + "    \"kcInternalAuthUrl\": \"http://default-sso-in-namespace-service.ent.svc.cluster.local:8080/auth\",\n"
-                + "    \"kcRealm\": \"entando\",\n"
-                + "    \"kcAdminUsername\": \"entando_keycloak_admin\",\n"
-                + "    \"kcAdminPassword\": \"41814475bec245bb\",\n"
-                + "  },\n"
-                + "  {\n"
-                + "    \"tenantCode\": \"tenant2\",\n"
-                + "    \"kcAuthUrl\": \"tenant2.10.4.100.225.nip.io/auth\",\n"
-                + "    \"kcInternalAuthUrl\": \"http://default-sso-in-namespace-service.ent.svc.cluster.local:8080/auth\",\n"
-                + "    \"kcRealm\": \"realm2\",\n"
-                + "    \"kcAdminUsername\": \"entando_keycloak_admin\",\n"
-                + "    \"kcAdminPassword\": \"41814475bec245bb\",\n"
-                + "  }\n"
-                + "]";
+        return Optional.ofNullable(k8sClient.getSecretByName(ENTANDO_TENANT_SECRET, namespace).get()).map(this::unpackTenantSecret)
+                .orElseThrow(() -> new IllegalStateException(
+                        String.format("Unable to load secret with name '%s'", ENTANDO_TENANT_SECRET)));
     }
 
-    public String getRealm(String tenantCode) {
+    private String unpackTenantSecret(Secret secret) {
+        Optional<String> value = Optional.ofNullable(secret.getData())
+                .map(data -> Optional.ofNullable(data.get(ENTANDO_TENANT_SECRET_KEY))
+                        .map(s -> new String(Base64.getDecoder().decode(s), StandardCharsets.UTF_8)))
+                .orElseGet(() -> Optional.ofNullable(secret.getStringData())
+                        .map(data -> data.get(ENTANDO_TENANT_SECRET_KEY)));
+
+        return value.orElseThrow(
+                () -> new IllegalStateException(String.format("Unable to load from secret value with key '%s'",
+                        ENTANDO_TENANT_SECRET_KEY)));
+    }
+
+    public String getKcRealm(String tenantCode) {
         return fetchTenantConfiguration(tenantCode).getKcRealm();
     }
 
