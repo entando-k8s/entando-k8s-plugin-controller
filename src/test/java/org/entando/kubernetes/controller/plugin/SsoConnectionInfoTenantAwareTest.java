@@ -31,7 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 @Tag("unit")
-class SimpleSsoConnectionInfoTest {
+class SsoConnectionInfoTenantAwareTest {
 
     @Mock
     private KubernetesClientForControllers k8sClient;
@@ -57,7 +57,7 @@ class SimpleSsoConnectionInfoTest {
         when(secretResource.get()).thenReturn(sec);
         when(k8sClient.getSecretByName("entando-tenants-secret", ns)).thenReturn(secretResource);
 
-        SsoConnectionInfo info = new SimpleSsoConnectionInfo("tenant1", ns, k8sClient);
+        SsoConnectionInfo info = new SsoConnectionInfoTenantAware("tenant1", ns, k8sClient);
         Assertions.assertEquals("realm1", info.getDefaultRealm().orElse(""));
         Assertions.assertEquals("http://kchost.com/auth", info.getExternalBaseUrl());
         Assertions.assertEquals("http://mykcsvc.nstest.svc.cluster.local/auth", info.getInternalBaseUrl().orElse(""));

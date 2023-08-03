@@ -8,13 +8,13 @@ import org.entando.kubernetes.controller.spi.client.KubernetesClientForControlle
 import org.entando.kubernetes.controller.spi.common.EntandoOperatorSpiConfig;
 import org.entando.kubernetes.controller.spi.deployable.SsoConnectionInfo;
 
-public class SimpleSsoConnectionInfo implements SsoConnectionInfo {
+public class SsoConnectionInfoTenantAware implements SsoConnectionInfo {
 
     private final String tenantCode;
     private final String namespace;
     private final TenantConfigurationService tenantConfigurationService;
 
-    public SimpleSsoConnectionInfo(String tenantCode, String namespace,
+    public SsoConnectionInfoTenantAware(String tenantCode, String namespace,
             KubernetesClientForControllers k8sClient) {
         this.tenantCode = tenantCode;
         this.namespace = namespace;
@@ -32,12 +32,17 @@ public class SimpleSsoConnectionInfo implements SsoConnectionInfo {
         return new SecretBuilder()
                 .withNewMetadata()
                 .withNamespace(namespace)
-                .withName(tenantCode + "-tenant-sso-secret")
+                .withName(makeKubernetesCompatible(tenantCode) + "-tenant-sso-secret")
                 .endMetadata()
                 .addToStringData(
                         Map.of("username", tenantConfigurationService.getKcAdminUsername(tenantCode), "password",
                                 tenantConfigurationService.getKcAdminPassword(tenantCode)))
                 .build();
+    }
+
+    public static String makeKubernetesCompatible(String value) {
+        return value.toLowerCase()
+                .replaceAll("[\\/\\.\\:_]", "-");
     }
 
     @Override
@@ -54,5 +59,4 @@ public class SimpleSsoConnectionInfo implements SsoConnectionInfo {
     public Optional<String> getInternalBaseUrl() {
         return Optional.of(tenantConfigurationService.getKcInternalAuthUrl(tenantCode));
     }
-
 }

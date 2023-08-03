@@ -46,6 +46,7 @@ import org.entando.kubernetes.model.capability.StandardCapability;
 import org.entando.kubernetes.model.capability.StandardCapabilityImplementation;
 import org.entando.kubernetes.model.common.DbmsVendor;
 import org.entando.kubernetes.model.common.EntandoControllerFailure;
+import org.entando.kubernetes.model.common.EntandoMultiTenancy;
 import org.entando.kubernetes.model.common.ServerStatus;
 import org.entando.kubernetes.model.plugin.EntandoPlugin;
 import picocli.CommandLine;
@@ -132,7 +133,7 @@ public class EntandoPluginController implements Runnable {
 
     private boolean isPrimary(EntandoPlugin entandoPlugin) {
         boolean isPrimary = StringUtils.isBlank(entandoPlugin.getSpec().getTenantCode())
-                || StringUtils.equalsIgnoreCase("PRIMARY", entandoPlugin.getSpec().getTenantCode());
+                || StringUtils.equalsIgnoreCase(EntandoMultiTenancy.PRIMARY_TENANT, entandoPlugin.getSpec().getTenantCode());
         LOGGER.log(Level.SEVERE, () -> String.format("tenantCode '%s' is primary ? '%s'",
                 entandoPlugin.getSpec().getTenantCode(), isPrimary));
         return isPrimary;
@@ -148,7 +149,7 @@ public class EntandoPluginController implements Runnable {
 
     private SsoConnectionInfo getTenantSsoInfo(String tenantCode) throws TimeoutException {
         SsoConnectionInfo ssoInfo =
-                new SimpleSsoConnectionInfo(tenantCode, entandoPlugin.getMetadata().getNamespace(), k8sClient);
+                new SsoConnectionInfoTenantAware(tenantCode, entandoPlugin.getMetadata().getNamespace(), k8sClient);
 
         // done for compatibility with non tenant behavior
         final CapabilityProvisioningResult capabilityResult = capabilityProvider
