@@ -1,4 +1,4 @@
-FROM entando/entando-k8s-operator-common:7.3.0-ENG-4858-PR-136
+FROM entando/entando-k8s-operator-common:7.3.0-ENG-5073-PR-139
 ARG VERSION
 LABEL name="Entando K8S Plugin Controller" \
       vendor="Entando" \
