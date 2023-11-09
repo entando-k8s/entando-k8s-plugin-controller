@@ -1,9 +1,9 @@
-FROM entando/entando-k8s-operator-common:7.3.0-rc2
+FROM entando/entando-k8s-operator-common:7.3.0
 ARG VERSION
 LABEL name="Entando K8S Plugin Controller" \
       vendor="Entando" \
       version="v${VERSION}" \
-      release="7.1" \
+      release="7.3" \
       summary="This container processes the EntandoPlugin custom resource and deploys the specified microservice Docker image." \
       description="This is a run-to-completion container. It processes new EntandoPlugin Custom \
                    Resources and deploys an instance of the specified microservice Docker image \
