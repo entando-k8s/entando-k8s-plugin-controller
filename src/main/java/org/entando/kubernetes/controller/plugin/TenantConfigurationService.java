@@ -81,10 +81,10 @@ public class TenantConfigurationService {
 
     private String unpackTenantSecret(Secret secret) {
         Optional<String> value = Optional.ofNullable(secret.getData())
-                .map(data -> Optional.ofNullable(data.get(ENTANDO_TENANT_SECRET_KEY))
+                .flatMap(data -> Optional.ofNullable(data.get(ENTANDO_TENANT_SECRET_KEY))
                         .map(s -> new String(Base64.getDecoder().decode(s), StandardCharsets.UTF_8)))
-                .orElseGet(() -> Optional.ofNullable(secret.getStringData())
-                        .map(data -> data.get(ENTANDO_TENANT_SECRET_KEY)));
+                .or(() -> Optional.ofNullable(secret.getStringData())
+                        .flatMap(data -> Optional.ofNullable(data.get(ENTANDO_TENANT_SECRET_KEY))));
 
         return value.orElseThrow(
                 () -> new IllegalStateException(String.format("Unable to load from secret value with key '%s'",
