@@ -70,7 +70,6 @@
         <maven.compiler.target>17</maven.compiler.target>
         <skipLicenseDownload>true</skipLicenseDownload>
         <sonar.projectKey>${github.organization}_${project.artifactId}</sonar.projectKey>
-        <sonar.skip>true</sonar.skip>
     </properties>
     <issueManagement>
         <system>Github</system>
