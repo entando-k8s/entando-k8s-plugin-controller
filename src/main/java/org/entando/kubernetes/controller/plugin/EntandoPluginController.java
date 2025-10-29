@@ -18,6 +18,7 @@ package org.entando.kubernetes.controller.plugin;
 
 import static java.lang.String.format;
 
+import jakarta.inject.Inject;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collections;
@@ -25,7 +26,6 @@ import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.entando.kubernetes.controller.spi.capability.CapabilityProvider;
 import org.entando.kubernetes.controller.spi.capability.CapabilityProvisioningResult;
