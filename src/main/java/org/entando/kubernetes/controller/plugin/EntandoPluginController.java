@@ -18,6 +18,7 @@ package org.entando.kubernetes.controller.plugin;
 
 import static java.lang.String.format;
 
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import jakarta.inject.Inject;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -199,13 +200,24 @@ public class EntandoPluginController implements Runnable {
     }
 
     private void cleanupFailedPluginInstallation(ServerStatus failedServerStatus) {
-        var dpn = failedServerStatus.getDeploymentName().orElse("");
-        if (dpn.length() == 0) {
+        // Fallback to deriving deployment name if not set in ServerStatus (workaround for K8s 1.33 timing issue)
+        var dpn = failedServerStatus.getDeploymentName()
+                .orElseGet(() -> NameUtils.standardDeployment(entandoPlugin));
+        if (dpn.isEmpty()) {
             throw new CommandLine.ExecutionException(new CommandLine(this),
                     "Unable to extract from the custom resource the status of the failed server (C1)");
         }
         var ns = entandoPlugin.getMetadata().getNamespace();
-        k8sClient.getDeploymentByName(dpn, ns).scale(0);
+        try {
+            var deployment = k8sClient.getDeploymentByName(dpn, ns);
+            if (deployment != null) {
+                deployment.scale(0);
+            } else {
+                LOGGER.log(Level.WARNING, () -> format("Deployment %s/%s not found, skipping scale down", ns, dpn));
+            }
+        } catch (KubernetesClientException e) {
+            LOGGER.log(Level.WARNING, e, () -> format("Failed to scale down deployment %s/%s", ns, dpn));
+        }
     }
 
     static final String STDOUT_SEPARATOR;

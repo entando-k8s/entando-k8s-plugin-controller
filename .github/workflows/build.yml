@@ -135,8 +135,12 @@ jobs:
 
       - name: Verify cluster connection
         run: |
-          kubectl cluster-info
-          kubectl get namespaces
+          if kubectl cluster-info > /dev/null 2>&1; then
+            echo "Connection ok"
+          else
+            echo "Connection failed"
+            exit 1
+          fi
 
       - name: Configure
         id: configure
