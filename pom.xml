@@ -21,7 +21,7 @@
     <parent>
         <groupId>org.entando</groupId>
         <artifactId>entando-quarkus-parent</artifactId>
-        <version>7.5.0</version>
+        <version>7.5.1</version>
         <relativePath/>
     </parent>
     <version>7.5.1-SNAPSHOT</version>
